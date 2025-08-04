@@ -35,6 +35,7 @@
             --warning: #facc15;        /* Yellow for warning/partial states */
             --health-player: #22c55e;   /* Green for player health */
             --health-enemy: #ef4444;   /* Red for enemy health */
+            --health-damage: #f59e0b;  /* Amber for damage indicator */
             --mana: #60a5fa;           /* Blue for mana bars */
         }
 
@@ -244,16 +245,28 @@
             box-shadow: 0 0 15px rgba(56, 189, 248, 0.2);
         }
         
-        /* Health Bar */
+        /* === REFINED: Health Bar Styling === */
         .health-bar-bg {
             background-color: var(--bg-tertiary);
             border-radius: 0.25rem;
             overflow: hidden;
+            position: relative;
         }
-        .health-bar-fill {
+        .health-bar-damage, .health-bar-fill {
+            position: absolute;
+            top: 0;
+            left: 0;
             height: 100%;
             border-radius: 0.25rem;
-            transition: width 0.5s ease;
+        }
+        .health-bar-damage {
+            background-color: var(--health-damage);
+            z-index: 1;
+            transition: width 0.5s ease-out; /* Slower transition for the damage indicator */
+        }
+        .health-bar-fill {
+            z-index: 2;
+            /* The transition is now handled by JavaScript's lerp for smoothness */
         }
         .health-bar-fill.player {
              background: linear-gradient(to right, var(--health-player), #4ade80);
@@ -262,24 +275,30 @@
              background: linear-gradient(to right, var(--health-enemy), #f87171);
         }
 
-        /* Combat Damage Text */
-        .combat-damage-text {
+        /* === REFINED: Combat Text Popup Styling === */
+        .combat-text-popup {
             position: absolute;
-            top: -1.5rem;
             left: 50%;
-            transform: translateX(-50%);
-            font-size: 1.5rem;
-            font-weight: bold;
-            opacity: 0;
-            transition: all 0.5s ease;
-            text-shadow: 0 0 5px black;
+            top: 20%;
+            font-size: 1.25rem; /* Made smaller */
+            font-weight: 800;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.7);
+            pointer-events: none;
+            animation: fadeAndMoveUp 0.8s ease-out forwards;
         }
-        .combat-damage-text.show {
-            opacity: 1;
-            top: -2.5rem;
+        .combat-text-popup.damage { color: var(--error); }
+        .combat-text-popup.heal { color: var(--success); }
+
+        @keyframes fadeAndMoveUp {
+            from {
+                opacity: 1;
+                transform: translate(-50%, 0);
+            }
+            to {
+                opacity: 0;
+                transform: translate(-50%, -50px);
+            }
         }
-        .combat-damage-text.player-damage { color: var(--health-player); }
-        .combat-damage-text.enemy-damage { color: var(--error); }
 
 
         /* Potion Effect Animation */
@@ -315,6 +334,41 @@
         @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
+        }
+        
+        /* Enemy Slot Animation */
+        .enemy-slot-cycle {
+            filter: blur(3px);
+            opacity: 0.7;
+            transform: scale(0.95);
+            transition: all 0.05s linear;
+        }
+        
+        /* Enemy Active Glow */
+        .enemy-active-glow {
+            border: 2px solid var(--accent-primary);
+            box-shadow: 0 0 25px var(--accent-primary);
+            animation: finalGlow 1.5s ease-out;
+        }
+        @keyframes finalGlow {
+            from {
+                border-color: transparent;
+                box-shadow: none;
+            }
+            to {
+                border-color: var(--accent-primary);
+                box-shadow: 0 0 25px var(--accent-primary);
+            }
+        }
+
+        /* Crafting quantity input styles */
+        .quantity-input {
+            -moz-appearance: textfield;
+        }
+        .quantity-input::-webkit-outer-spin-button,
+        .quantity-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
         }
     </style>
 </head>
@@ -456,15 +510,15 @@
                     </button>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
                         <!-- Player Side -->
-                        <div id="playerCombatant" class="glass-pane p-6 rounded-xl text-center relative"></div>
+                        <div id="playerCombatant" class="glass-pane p-6 rounded-xl text-center relative overflow-hidden"></div>
                         <!-- Enemy Side -->
-                        <div id="enemyCombatant" class="glass-pane p-6 rounded-xl text-center relative"></div>
+                        <div id="enemyCombatant" class="glass-pane p-6 rounded-xl text-center relative overflow-hidden"></div>
                     </div>
                      <div id="combatControls" class="mt-8 flex justify-center items-center gap-4">
                         <button id="startFightBtn" class="pro-btn btn-success text-xl px-8 py-4">
                             <i class="ph-bold ph-swords"></i> Start
                         </button>
-                        <button id="dodgeBtn" class="pro-btn btn-primary text-xl px-8 py-4">
+                        <button id="secondaryCombatActionBtn" class="pro-btn btn-primary text-xl px-8 py-4">
                             <i class="ph-bold ph-person-simple-run"></i> Dodge
                         </button>
                     </div>
@@ -480,11 +534,13 @@
     <script>
     /**
      * =================================================================
-     * AWESOME GAME - PROFESSIONAL EDITION JAVASCRIPT V13
+     * AWESOME GAME - PROFESSIONAL EDITION JAVASCRIPT V20
      * =================================================================
      * This script follows a modular pattern to organize the game's logic,
      * state, and UI manipulation for better readability and maintainability.
-     * NEW: Potion stacking, advanced backpack/character filters, improved combat UI.
+     * NEW V20:
+     * - Recipe cards now dynamically update the required materials list when the
+     * quantity input is changed, providing instant feedback to the player.
      */
     const App = {
         // --- STATE ---
@@ -510,8 +566,10 @@
                 },
                 totalStats: {},
                 tempStatBoosts: {}, // e.g., { damage: { value: 2.5, timeoutId: ... }, defense: { ... } }
+                damageIndicatorHealth: 100, // For the yellow "damage taken" bar
+                healthTarget: null, // For gradual healing
             },
-            currentScreen: 'shop',
+            currentScreen: 'crafting',
             shopFilter: 'All',
             craftingFilter: 'All',
             characterEquipFilter: 'All',
@@ -519,16 +577,24 @@
             backpackSubFilter: 'All',
             currentEnemy: null,
             isFighting: false,
+            isFindingEnemy: false,
             playerAttackTimeout: null,
             enemyAttackTimeout: null,
-            lastPlayerDamage: 0,
-            lastEnemyDamage: 0,
+            potionCooldowns: {
+                potion1: false,
+                potion2: false,
+            },
+            animationFrameId: null,
         },
 
         // --- CONFIGURATION ---
         config: {
             initialCoins: 10,
             potionStackLimit: 3,
+            potionUseCooldown: 2000, // 2 seconds
+            baseCraftingTime: 2000,
+            baseSmeltingTime: 2000,
+            baseBrewingTime: 3000,
             screens: {
                 shop: { title: 'The Shop', subtitle: 'Purchase raw materials.', icon: 'ph-storefront' },
                 backpack: { title: 'Your Backpack', subtitle: 'A collection of your items.', icon: 'ph-backpack' },
@@ -720,27 +786,27 @@
             maps: {
                 "Grassy Plains": {
                     enemies: [
-                        { name: "Bunny", health: 15, mana: 0, damage: 2, defense: 0, attackSpeed: 1.0, loot: { coins: [1, 5], materials: { "Feathers": { chance: 0.9, amount: [1, 2] } } } },
-                        { name: "Wild Boar", health: 30, mana: 0, damage: 4, defense: 1, attackSpeed: 0.8, loot: { coins: [5, 15], materials: { "Bone": { chance: 0.5, amount: [1, 2] }, "Leather Scrap": { chance: 0.8, amount: [1, 3] } } } },
-                        { name: "Red Fox", health: 28, mana: 0, damage: 5, defense: 1, attackSpeed: 1.0, loot: { coins: [8, 18], materials: { "Fang": { chance: 0.5, amount: [1, 2] }, "Bone": { chance: 0.3, amount: [1, 1] } } } },
-                        { name: "Wild Wolf", health: 25, mana: 0, damage: 6, defense: 0, attackSpeed: 1.2, loot: { coins: [10, 20], materials: { "Wolf Pelt": { chance: 0.4, amount: [1, 1] }, "Fang": { chance: 0.2, amount: [1, 1] } } } },
-                        { name: "Giant Hen", health: 40, mana: 0, damage: 7, defense: 2, attackSpeed: 0.7, loot: { coins: [20, 40], materials: { "Feathers": { chance: 1.0, amount: [2, 5] }, "Bone": { chance: 0.5, amount: [1, 3] } } } },
-                        { name: "Wild Bear", health: 50, mana: 0, damage: 8, defense: 2, attackSpeed: 0.6, loot: { coins: [25, 50], materials: { "Bear Fur": { chance: 0.6, amount: [1, 2] }, "Bone": { chance: 0.7, amount: [1, 4] } } } },
-                        { name: "Pale Wolf", health: 60, mana: 0, damage: 10, defense: 3, attackSpeed: 1.1, loot: { coins: [40, 70], materials: { "Wolf Pelt": { chance: 0.8, amount: [1, 2] }, "Fang": { chance: 0.6, amount: [1, 3] } } } },
+                        { name: "Bunny", health: 15, mana: 0, damage: 2, defense: 0, attackSpeed: 1.0, spawnChance: 0.30, loot: { coins: [1, 5], materials: { "Feathers": { chance: 0.9, amount: [1, 2] } } } },
+                        { name: "Wild Boar", health: 30, mana: 0, damage: 4, defense: 1, attackSpeed: 0.8, spawnChance: 0.25, loot: { coins: [5, 15], materials: { "Bone": { chance: 0.5, amount: [1, 2] }, "Leather Scrap": { chance: 0.8, amount: [1, 3] } } } },
+                        { name: "Red Fox", health: 28, mana: 0, damage: 5, defense: 1, attackSpeed: 1.0, spawnChance: 0.20, loot: { coins: [8, 18], materials: { "Fang": { chance: 0.5, amount: [1, 2] }, "Bone": { chance: 0.3, amount: [1, 1] } } } },
+                        { name: "Wild Wolf", health: 25, mana: 0, damage: 6, defense: 0, attackSpeed: 1.2, spawnChance: 0.15, loot: { coins: [10, 20], materials: { "Wolf Pelt": { chance: 0.4, amount: [1, 1] }, "Fang": { chance: 0.2, amount: [1, 1] } } } },
+                        { name: "Giant Hen", health: 40, mana: 0, damage: 7, defense: 2, attackSpeed: 0.7, spawnChance: 0.05, loot: { coins: [20, 40], materials: { "Feathers": { chance: 1.0, amount: [2, 5] }, "Bone": { chance: 0.5, amount: [1, 3] } } } },
+                        { name: "Wild Bear", health: 50, mana: 0, damage: 8, defense: 2, attackSpeed: 0.6, spawnChance: 0.03, loot: { coins: [25, 50], materials: { "Bear Fur": { chance: 0.6, amount: [1, 2] }, "Bone": { chance: 0.7, amount: [1, 4] } } } },
+                        { name: "Pale Wolf", health: 60, mana: 0, damage: 10, defense: 3, attackSpeed: 1.1, spawnChance: 0.02, loot: { coins: [40, 70], materials: { "Wolf Pelt": { chance: 0.8, amount: [1, 2] }, "Fang": { chance: 0.6, amount: [1, 3] } } } },
                     ]
                 },
                 "Redwood Valley": {
                     enemies: [
-                        { name: "Rock Beetle", health: 40, mana: 0, damage: 5, defense: 5, attackSpeed: 0.5, loot: { coins: [20, 40], materials: { "Shard Fragment": { chance: 0.5, amount: [1, 2] }, "Raw Iron": { chance: 0.3, amount: [1, 1] } } } },
-                        { name: "Fiery Wasp", health: 20, mana: 0, damage: 8, defense: 0, attackSpeed: 1.5, loot: { coins: [15, 30], materials: { "Feathers": { chance: 0.8, amount: [2, 4] }, "String": { chance: 0.5, amount: [1, 2] } } } },
-                        { name: "Large Ladybug", health: 35, mana: 0, damage: 6, defense: 3, attackSpeed: 0.7, loot: { coins: [18, 35], materials: { "Fabric": { chance: 0.6, amount: [1, 3] } } } },
+                        { name: "Rock Beetle", health: 40, mana: 0, damage: 5, defense: 5, attackSpeed: 0.5, spawnChance: 0.5, loot: { coins: [20, 40], materials: { "Shard Fragment": { chance: 0.5, amount: [1, 2] }, "Raw Iron": { chance: 0.3, amount: [1, 1] } } } },
+                        { name: "Fiery Wasp", health: 20, mana: 0, damage: 8, defense: 0, attackSpeed: 1.5, spawnChance: 0.3, loot: { coins: [15, 30], materials: { "Feathers": { chance: 0.8, amount: [2, 4] }, "String": { chance: 0.5, amount: [1, 2] } } } },
+                        { name: "Large Ladybug", health: 35, mana: 0, damage: 6, defense: 3, attackSpeed: 0.7, spawnChance: 0.2, loot: { coins: [18, 35], materials: { "Fabric": { chance: 0.6, amount: [1, 3] } } } },
                     ]
                 },
                 "Enchanted Forest": {
                     enemies: [
-                        { name: "Ent", health: 80, mana: 20, damage: 10, defense: 4, attackSpeed: 0.4, loot: { coins: [50, 100], materials: { "Wood": { chance: 1.0, amount: [5, 10] }, "Hardening Dust": { chance: 0.2, amount: [1, 1] } } } },
-                        { name: "Mimic Chest", health: 60, mana: 0, damage: 12, defense: 2, attackSpeed: 0.8, loot: { coins: [100, 200], materials: { "Raw Gold": { chance: 0.5, amount: [1, 3] }, "Metal Scrap": { chance: 0.8, amount: [2, 5] } } } },
-                        { name: "Corrupted Ent", health: 100, mana: 30, damage: 15, defense: 5, attackSpeed: 0.3, loot: { coins: [80, 150], materials: { "Wood": { chance: 1.0, amount: [3, 8] }, "Hardening Dust": { chance: 0.5, amount: [1, 2] }, "Shard Fragment": { chance: 0.3, amount: [1, 3] } } } },
+                        { name: "Ent", health: 80, mana: 20, damage: 10, defense: 4, attackSpeed: 0.4, spawnChance: 0.5, loot: { coins: [50, 100], materials: { "Wood": { chance: 1.0, amount: [5, 10] }, "Hardening Dust": { chance: 0.2, amount: [1, 1] } } } },
+                        { name: "Mimic Chest", health: 60, mana: 0, damage: 12, defense: 2, attackSpeed: 0.8, spawnChance: 0.2, loot: { coins: [100, 200], materials: { "Raw Gold": { chance: 0.5, amount: [1, 3] }, "Metal Scrap": { chance: 0.8, amount: [2, 5] } } } },
+                        { name: "Corrupted Ent", health: 100, mana: 30, damage: 15, defense: 5, attackSpeed: 0.3, spawnChance: 0.3, loot: { coins: [80, 150], materials: { "Wood": { chance: 1.0, amount: [3, 8] }, "Hardening Dust": { chance: 0.5, amount: [1, 2] }, "Shard Fragment": { chance: 0.3, amount: [1, 3] } } } },
                     ]
                 }
             }
@@ -753,8 +819,10 @@
             this.cacheDOMElements();
             this.state.coins = this.config.initialCoins;
             this.calculateTotalStats();
+            this.state.player.damageIndicatorHealth = this.state.player.totalStats.health;
             this.bindEvents();
             this.render();
+            this.startHealthBarAnimation(); // Start the animation loop permanently
         },
 
         cacheDOMElements() {
@@ -798,7 +866,7 @@
                 combatControls: document.getElementById('combatControls'),
                 potionControls: document.getElementById('potionControls'),
                 startFightBtn: document.getElementById('startFightBtn'),
-                dodgeBtn: document.getElementById('dodgeBtn'),
+                secondaryCombatActionBtn: document.getElementById('secondaryCombatActionBtn'),
             };
         },
 
@@ -823,18 +891,22 @@
                     this.renderShopScreen();
                 }
             });
-            this.elements.recipesContainer.addEventListener('click', (e) => {
-                const btn = e.target.closest('.craft-btn');
-                if(btn && !btn.disabled) this.craftItem(btn.dataset.recipeName, btn);
-            });
-            this.elements.smeltingRecipesContainer.addEventListener('click', (e) => {
-                const btn = e.target.closest('.smelt-btn');
-                if(btn && !btn.disabled) this.smeltItem(btn.dataset.recipeName, btn);
-            });
-            this.elements.brewingRecipesContainer.addEventListener('click', (e) => {
-                const btn = e.target.closest('.brew-btn');
-                if(btn && !btn.disabled) this.brewItem(btn.dataset.recipeName, btn);
-            });
+
+            const handleProcessClick = (e, type, method) => {
+                const btn = e.target.closest(`.${type}-btn`);
+                if (btn && !btn.disabled) {
+                    const card = btn.closest('.recipe-card');
+                    const input = card.querySelector('.quantity-input');
+                    const quantity = parseInt(input.value, 10);
+                    if (quantity > 0) {
+                        method.call(this, btn.dataset.recipeName, quantity, btn);
+                    }
+                }
+            };
+            this.elements.recipesContainer.addEventListener('click', (e) => handleProcessClick(e, 'craft', this.craftItem));
+            this.elements.smeltingRecipesContainer.addEventListener('click', (e) => handleProcessClick(e, 'smelt', this.smeltItem));
+            this.elements.brewingRecipesContainer.addEventListener('click', (e) => handleProcessClick(e, 'brew', this.brewItem));
+            
             this.elements.craftingFilterContainer.addEventListener('click', (e) => {
                 const btn = e.target.closest('.filter-btn');
                 if (btn) {
@@ -866,15 +938,19 @@
             });
             this.elements.mapButtonsContainer.addEventListener('click', (e) => {
                 const btn = e.target.closest('.map-btn');
-                if (btn) this.startHunt(btn.dataset.mapName);
+                if (btn && !this.state.isFindingEnemy) this.startHunt(btn.dataset.mapName);
             });
             this.elements.returnToMapBtn.addEventListener('click', () => {
+                if (this.state.isFindingEnemy) return;
                 this.stopCombat();
                 this.elements.combatContainer.classList.add('hidden');
                 this.elements.mapSelectionContainer.style.display = 'block';
                 this.state.currentEnemy = null;
             });
-            this.elements.dodgeBtn.addEventListener('click', () => this.findNewOpponent());
+            this.elements.secondaryCombatActionBtn.addEventListener('click', () => {
+                if (this.state.isFindingEnemy) return;
+                this.findNewOpponent();
+            });
             this.elements.startFightBtn.addEventListener('click', () => this.startCombat());
             this.elements.equipmentSlotsContainer.addEventListener('click', (e) => {
                 const btn = e.target.closest('.unequip-btn');
@@ -917,39 +993,41 @@
             }
         },
 
-        craftItem(recipeName, buttonElement) {
+        craftItem(recipeName, quantity, buttonElement) {
             const recipeData = this.config.craftingRecipes.find(r => r.name === recipeName);
             if(!recipeData) return;
-            const canCraft = Object.entries(recipeData.recipe).every(([mat, req]) => (this.state.inventory.materials[mat] || 0) >= req);
+            const canCraft = Object.entries(recipeData.recipe).every(([mat, req]) => (this.state.inventory.materials[mat] || 0) >= (req * quantity));
             
             if(canCraft) {
-                this.animateProcessing(buttonElement, 'Crafting...', 2000, () => {
+                const time = (this.config.baseCraftingTime * quantity) / 2;
+                this.animateProcessing(buttonElement, 'Crafting...', time, () => {
                     Object.entries(recipeData.recipe).forEach(([mat, req]) => {
-                        this.state.inventory.materials[mat] -= req;
-                        if(this.state.inventory.materials[mat] === 0) delete this.state.inventory.materials[mat];
+                        this.state.inventory.materials[mat] -= (req * quantity);
+                        if(this.state.inventory.materials[mat] <= 0) delete this.state.inventory.materials[mat];
                     });
-                    this.state.inventory.crafted[recipeName] = (this.state.inventory.crafted[recipeName] || 0) + 1;
-                    this.showToast(`Successfully crafted 1x ${recipeName}!`, 'success');
+                    this.state.inventory.crafted[recipeName] = (this.state.inventory.crafted[recipeName] || 0) + quantity;
+                    this.showToast(`Successfully crafted ${quantity}x ${recipeName}!`, 'success');
                     this.render();
                 });
             } else {
                 this.showToast(`Cannot craft. Missing materials.`, 'error');
             }
         },
-
-        smeltItem(recipeName, buttonElement) {
+        
+        smeltItem(recipeName, quantity, buttonElement) {
             const recipeData = this.config.smeltingRecipes.find(r => r.name === recipeName);
             if(!recipeData) return;
-            const canSmelt = Object.entries(recipeData.recipe).every(([mat, req]) => (this.state.inventory.materials[mat] || 0) >= req);
+            const canSmelt = Object.entries(recipeData.recipe).every(([mat, req]) => (this.state.inventory.materials[mat] || 0) >= (req * quantity));
             
             if(canSmelt) {
-                this.animateProcessing(buttonElement, 'Smelting...', 2000, () => {
+                const time = (this.config.baseSmeltingTime * quantity) / 2;
+                this.animateProcessing(buttonElement, 'Smelting...', time, () => {
                     Object.entries(recipeData.recipe).forEach(([mat, req]) => {
-                        this.state.inventory.materials[mat] -= req;
-                        if(this.state.inventory.materials[mat] === 0) delete this.state.inventory.materials[mat];
+                        this.state.inventory.materials[mat] -= (req * quantity);
+                        if(this.state.inventory.materials[mat] <= 0) delete this.state.inventory.materials[mat];
                     });
-                    this.state.inventory.materials[recipeName] = (this.state.inventory.materials[recipeName] || 0) + 1;
-                    this.showToast(`Successfully smelted 1x ${recipeName}!`, 'success');
+                    this.state.inventory.materials[recipeName] = (this.state.inventory.materials[recipeName] || 0) + quantity;
+                    this.showToast(`Successfully smelted ${quantity}x ${recipeName}!`, 'success');
                     this.render(); 
                 });
             } else {
@@ -957,19 +1035,20 @@
             }
         },
 
-        brewItem(recipeName, buttonElement) {
+        brewItem(recipeName, quantity, buttonElement) {
             const recipeData = this.config.brewingRecipes.find(r => r.name === recipeName);
             if(!recipeData) return;
-            const canBrew = Object.entries(recipeData.recipe).every(([mat, req]) => (this.state.inventory.materials[mat] || 0) >= req);
+            const canBrew = Object.entries(recipeData.recipe).every(([mat, req]) => (this.state.inventory.materials[mat] || 0) >= (req * quantity));
             
             if(canBrew) {
-                this.animateProcessing(buttonElement, 'Brewing...', 3000, () => {
+                const time = (this.config.baseBrewingTime * quantity) / 2;
+                this.animateProcessing(buttonElement, 'Brewing...', time, () => {
                     Object.entries(recipeData.recipe).forEach(([mat, req]) => {
-                        this.state.inventory.materials[mat] -= req;
-                        if(this.state.inventory.materials[mat] === 0) delete this.state.inventory.materials[mat];
+                        this.state.inventory.materials[mat] -= (req * quantity);
+                        if(this.state.inventory.materials[mat] <= 0) delete this.state.inventory.materials[mat];
                     });
-                    this.state.inventory.crafted[recipeName] = (this.state.inventory.crafted[recipeName] || 0) + 1;
-                    this.showToast(`Successfully brewed 1x ${recipeName}!`, 'success');
+                    this.state.inventory.crafted[recipeName] = (this.state.inventory.crafted[recipeName] || 0) + quantity;
+                    this.showToast(`Successfully brewed ${quantity}x ${recipeName}!`, 'success');
                     this.render();
                 });
             } else {
@@ -979,22 +1058,28 @@
 
         animateProcessing(buttonElement, text, delay, callback) {
             buttonElement.disabled = true;
-            buttonElement.innerHTML = `<i class="ph ph-circle-notch spinner"></i> ${text}`;
             const card = buttonElement.closest('.recipe-card');
+            const quantityControls = card.querySelector('.quantity-controls');
+            if (quantityControls) quantityControls.style.visibility = 'hidden';
+
+            buttonElement.innerHTML = `<i class="ph ph-circle-notch spinner"></i> ${text}`;
             const iconContainer = card.querySelector('.bg-gray-900\\/50');
             if (iconContainer) iconContainer.classList.add('processing-animation');
 
             setTimeout(() => {
                 if (iconContainer) iconContainer.classList.remove('processing-animation');
+                if (quantityControls) quantityControls.style.visibility = 'visible';
                 callback();
             }, delay);
         },
 
         calculateTotalStats() {
+            const oldHealth = this.state.player.totalStats.health || this.state.player.baseStats.health;
+            const oldMaxHealth = this.state.player.totalStats.maxHealth || this.state.player.baseStats.maxHealth;
+
             const total = JSON.parse(JSON.stringify(this.state.player.baseStats));
             let attackSpeedMultiplier = 1.0;
             
-            // Add permanent stats from equipment (non-potions)
             ['weapon1', 'weapon2', 'shield', 'armor', 'accessory1', 'accessory2'].forEach(slot => {
                 const itemName = this.state.player.equipped[slot];
                  if (!itemName) return;
@@ -1012,10 +1097,12 @@
             
             total.attackSpeed *= attackSpeedMultiplier;
 
-            // Add temporary stats from potions
             Object.entries(this.state.player.tempStatBoosts).forEach(([stat, boost]) => {
                 total[stat] = (total[stat] || 0) + boost.value;
             });
+            
+            const healthPercentage = oldHealth / oldMaxHealth;
+            total.health = isNaN(healthPercentage) ? total.maxHealth : healthPercentage * total.maxHealth;
             
             if (total.health > total.maxHealth) {
                 total.health = total.maxHealth;
@@ -1030,7 +1117,6 @@
 
             const oldMaxHealth = this.state.player.totalStats.maxHealth;
 
-            // Potion Stacking Logic
             if (itemData.slot === 'potion') {
                 const availableAmount = this.state.inventory.crafted[itemName] || 0;
                 let slotToFill = this.state.player.equipped.potion1?.name === itemName ? 'potion1' : (this.state.player.equipped.potion2?.name === itemName ? 'potion2' : null);
@@ -1059,7 +1145,7 @@
                 };
                 this.showToast(`Equipped ${amountToEquip}x ${itemName}.`, 'success');
 
-            } else { // Standard Equipment Logic
+            } else {
                 let targetSlot = null;
                 if (itemData.slot === 'weapon') {
                     if (!this.state.player.equipped.weapon1) targetSlot = 'weapon1';
@@ -1094,14 +1180,14 @@
             const equipped = this.state.player.equipped[slot];
             if (!equipped) return;
             
-            const isPotion = typeof equipped === 'object';
+            const isPotion = typeof equipped === 'object' && equipped !== null;
             const itemName = isPotion ? equipped.name : equipped;
             const quantity = isPotion ? equipped.quantity : 1;
 
             this.state.player.equipped[slot] = null;
             this.state.inventory.crafted[itemName] = (this.state.inventory.crafted[itemName] || 0) + quantity;
             
-            this.showToast(`Unequipped ${itemName}${isPotion ? ' (x' + quantity + ')' : ''}.`, 'success');
+            this.showToast(`Unequipped ${itemName}${isPotion ? ` (x${quantity})` : ''}.`, 'success');
             
             this.calculateTotalStats();
             this.renderCharacterScreen();
@@ -1109,46 +1195,54 @@
 
         usePotion(slot) {
             const potionStack = this.state.player.equipped[slot];
-            if (!potionStack || !this.state.isFighting) return;
+            if (!potionStack || !this.state.isFighting || this.state.potionCooldowns[slot]) return;
 
             const potionData = this.config.brewingRecipes.find(p => p.name === potionStack.name);
             if (!potionData) return;
+
+            this.state.potionCooldowns[slot] = true;
+            setTimeout(() => {
+                this.state.potionCooldowns[slot] = false;
+                if (this.state.currentScreen === 'hunt') this.renderPotionControls();
+            }, this.config.potionUseCooldown);
 
             const effect = potionData.effect;
             let effectType = '';
 
             if (effect.healPercent) {
-                const healAmount = this.state.player.totalStats.maxHealth * (effect.healPercent / 100);
-                this.state.player.totalStats.health = Math.min(this.state.player.totalStats.maxHealth, this.state.player.totalStats.health + healAmount);
-                this.showToast(`Healed for ${healAmount.toFixed(0)} HP!`, 'success');
+                const totalHeal = this.state.player.totalStats.maxHealth * (effect.healPercent / 100);
+                const currentHealth = this.state.player.totalStats.health;
+                const newHealthTarget = Math.min(this.state.player.totalStats.maxHealth, currentHealth + totalHeal);
+                this.state.player.healthTarget = newHealthTarget;
+                this.showToast(`Healing for ${totalHeal.toFixed(0)} HP...`, 'success');
                 effectType = 'heal';
             }
             if (effect.tempDefense) {
-                this.applyTempStatBoost('defense', effect.tempDefense, effect.duration);
+                this.applyTempStatBoost('defense', effect.tempDefense, effect.duration, potionData);
                 effectType = 'defense';
             }
             if (effect.tempDamage) {
-                this.applyTempStatBoost('damage', effect.tempDamage, effect.duration);
+                this.applyTempStatBoost('damage', effect.tempDamage, effect.duration, potionData);
                 effectType = 'strength';
             }
 
             this.showPotionEffectAnimation(effectType);
 
-            // Decrement or remove potion from slot
             potionStack.quantity--;
             if (potionStack.quantity <= 0) {
                 this.state.player.equipped[slot] = null;
             }
             
-            this.calculateTotalStats();
-            this.renderCombatView();
+            this.calculateTotalStats(); 
+            this.renderPotionControls();
         },
 
-        applyTempStatBoost(stat, value, duration) {
+        applyTempStatBoost(stat, value, duration, potionData) {
             if (this.state.player.tempStatBoosts[stat]) {
                 clearTimeout(this.state.player.tempStatBoosts[stat].timeoutId);
             }
-            this.showToast(`+${value} ${stat} for ${duration / 1000}s!`, 'info');
+            this.showToast(`${potionData.name}: +${value} ${stat} for ${duration / 1000}s.`, 'info');
+            
             const timeoutId = setTimeout(() => {
                 delete this.state.player.tempStatBoosts[stat];
                 this.calculateTotalStats();
@@ -1158,6 +1252,7 @@
                 }
                 this.showToast(`${stat.charAt(0).toUpperCase() + stat.slice(1)} boost wore off.`, 'error');
             }, duration);
+
             this.state.player.tempStatBoosts[stat] = { value, timeoutId };
             this.calculateTotalStats();
             this.renderPlayerStats();
@@ -1166,29 +1261,85 @@
             }
         },
 
+        getWeightedRandomEnemy(enemyList) {
+            const totalWeight = enemyList.reduce((sum, enemy) => sum + enemy.spawnChance, 0);
+            let random = Math.random() * totalWeight;
+
+            for (const enemy of enemyList) {
+                if (random < enemy.spawnChance) {
+                    return JSON.parse(JSON.stringify(enemy));
+                }
+                random -= enemy.spawnChance;
+            }
+            return JSON.parse(JSON.stringify(enemyList[enemyList.length - 1]));
+        },
+
         startHunt(mapName) {
             this.stopCombat();
             const mapData = this.config.maps[mapName];
             if (!mapData) return;
-            const enemyList = mapData.enemies;
-            const randomEnemy = JSON.parse(JSON.stringify(enemyList[Math.floor(Math.random() * enemyList.length)]));
-            randomEnemy.maxHealth = randomEnemy.health;
-            this.state.currentEnemy = randomEnemy;
+
+            const finalEnemy = this.getWeightedRandomEnemy(mapData.enemies);
+            this.runEnemySlotAnimation(mapData.enemies, finalEnemy);
+        },
+
+        runEnemySlotAnimation(enemyList, finalEnemy) {
+            this.state.isFindingEnemy = true;
             this.elements.mapSelectionContainer.style.display = 'none';
             this.elements.combatContainer.classList.remove('hidden');
-            this.elements.combatControls.style.display = 'flex';
-            this.elements.startFightBtn.disabled = false;
-            this.renderCombatView();
+            this.elements.combatControls.style.display = 'none';
+            this.elements.enemyCombatant.innerHTML = '';
+            this.elements.playerCombatant.innerHTML = '';
+            
+            const animationDuration = 1800;
+            const cycleInterval = 75;
+
+            const slotAnimation = setInterval(() => {
+                const randomEnemyForCycle = enemyList[Math.floor(Math.random() * enemyList.length)];
+                const iconInfo = this.config.enemyIcons[randomEnemyForCycle.name] || this.config.enemyIcons.Default;
+                const iconHTML = iconInfo.img ? `<img src="${iconInfo.img}" class="h-24 w-auto mx-auto mb-4 object-contain" alt="">` : '';
+                
+                this.elements.enemyCombatant.className = 'glass-pane p-6 rounded-xl text-center relative overflow-hidden enemy-slot-cycle';
+                this.elements.enemyCombatant.innerHTML = `
+                    ${iconHTML}
+                    <h3 class="text-2xl font-bold">${randomEnemyForCycle.name}</h3>
+                `;
+            }, cycleInterval);
+
+            setTimeout(() => {
+                clearInterval(slotAnimation);
+                
+                finalEnemy.maxHealth = finalEnemy.health;
+                finalEnemy.damageIndicatorHealth = finalEnemy.health;
+                this.state.currentEnemy = finalEnemy;
+
+                this.calculateTotalStats();
+                this.state.player.totalStats.health = this.state.player.totalStats.maxHealth;
+                this.state.player.damageIndicatorHealth = this.state.player.totalStats.maxHealth;
+                this.state.player.healthTarget = null;
+
+                this.renderCombatView();
+                
+                this.elements.enemyCombatant.classList.remove('enemy-slot-cycle');
+                this.elements.enemyCombatant.classList.add('enemy-active-glow');
+
+                this.elements.combatControls.style.display = 'flex';
+                this.elements.startFightBtn.disabled = false;
+                this.elements.secondaryCombatActionBtn.innerHTML = `<i class="ph-bold ph-person-simple-run"></i> Dodge`;
+                this.elements.secondaryCombatActionBtn.disabled = false;
+
+                this.state.isFindingEnemy = false;
+            }, animationDuration);
         },
         
         findNewOpponent() {
-            if (!this.state.currentEnemy) return;
+            if (!this.state.currentEnemy || this.state.isFindingEnemy) return;
             const currentMapName = Object.keys(this.config.maps).find(mapName => 
                 this.config.maps[mapName].enemies.some(e => e.name === this.state.currentEnemy.name)
             );
             if (currentMapName) {
                 this.startHunt(currentMapName);
-                this.showToast('Found a new opponent!', 'info');
+                this.showToast('Looking for a new opponent...', 'info');
             }
         },
 
@@ -1221,8 +1372,9 @@
             const defenseReduction = Math.min(100, enemy.defense) / 100;
             const damageDealt = Math.max(0, player.damage * (1 - defenseReduction));
             enemy.health = Math.max(0, enemy.health - damageDealt);
-            this.showCombatDamage(this.elements.enemyCombatant, damageDealt, 'player-damage');
-            this.renderCombatView();
+            
+            this.showCombatText(this.elements.enemyCombatant, `-${damageDealt.toFixed(1)}`, 'damage');
+            
             if (enemy.health <= 0) {
                 this.endCombat(true);
             } else {
@@ -1236,10 +1388,11 @@
             const enemy = this.state.currentEnemy;
             const defenseReduction = Math.min(100, player.defense) / 100;
             const damageTaken = Math.max(0, enemy.damage * (1 - defenseReduction));
-            player.health = Math.max(0, player.health - damageTaken);
-            this.showCombatDamage(this.elements.playerCombatant, damageTaken, 'enemy-damage');
-            this.renderCombatView();
-            if (player.health <= 0) {
+            
+            this.state.player.healthTarget = Math.max(0, player.health - damageTaken);
+            this.showCombatText(this.elements.playerCombatant, `-${damageTaken.toFixed(1)}`, 'damage');
+
+            if (this.state.player.healthTarget <= 0) {
                 this.endCombat(false);
             } else {
                 this.state.enemyAttackTimeout = setTimeout(() => this.enemyAttack(), 1000 / enemy.attackSpeed);
@@ -1264,14 +1417,20 @@
                 this.showToast(`You defeated the ${this.state.currentEnemy.name}!`, 'success');
                 this.showToast(lootMsg, 'info');
 
+                this.elements.secondaryCombatActionBtn.innerHTML = `<i class="ph-bold ph-arrow-right"></i> Next Opponent`;
+
             } else {
                 const penalty = Math.floor(Math.random() * 101) + 50;
                 this.state.coins = Math.max(0, this.state.coins - penalty);
                 this.showToast(`You were defeated... Lost ${penalty.toLocaleString('en-US')} coins.`, 'error');
+                this.elements.secondaryCombatActionBtn.innerHTML = `<i class="ph-bold ph-person-simple-run"></i> Dodge`;
             }
-            this.state.player.totalStats.health = this.state.player.totalStats.maxHealth;
+            this.state.player.healthTarget = this.state.player.totalStats.maxHealth;
+            
             this.elements.combatControls.style.display = 'flex';
             this.elements.startFightBtn.disabled = true;
+            this.elements.secondaryCombatActionBtn.disabled = false;
+
             this.renderCoinBalance();
             this.renderPotionControls();
         },
@@ -1380,7 +1539,6 @@
             let allItems = { ...this.state.inventory.crafted, ...this.state.inventory.materials };
             let itemsToDisplay = Object.entries(allItems);
 
-            // Main Filter
             if (backpackFilter !== 'All') {
                 itemsToDisplay = itemsToDisplay.filter(([name, quant]) => {
                     const itemData = this.getItemData(name);
@@ -1393,7 +1551,6 @@
                 });
             }
 
-            // Sub Filter
             if (backpackSubFilter !== 'All') {
                  itemsToDisplay = itemsToDisplay.filter(([name, quant]) => {
                     const itemData = this.getItemData(name);
@@ -1566,21 +1723,21 @@
             if (!this.state.isFighting && this.state.player.totalStats.health <= 0) {
                  this.state.player.totalStats.health = this.state.player.totalStats.maxHealth;
             }
-            // Player Render
             const player = this.state.player.totalStats;
-            const playerHealthPercent = (player.health / player.maxHealth) * 100;
             const playerIconInfo = this.config.enemyIcons['You'];
             const playerIconHTML = playerIconInfo.img 
                 ? `<img src="${playerIconInfo.img}" class="h-24 w-auto mx-auto mb-4 object-contain" alt="You">`
                 : `<i class="ph-bold ${playerIconInfo.icon} ${playerIconInfo.color} text-8xl mx-auto mb-4"></i>`;
 
             this.elements.playerCombatant.innerHTML = `
-                <div class="combat-damage-text enemy-damage" id="playerDamageText"></div>
                 ${playerIconHTML}
                 <h3 class="text-2xl font-bold ${playerIconInfo.color}">You</h3>
                 <div class="my-4">
-                    <p class="font-bold text-xl">${player.health.toFixed(0)} / ${player.maxHealth}</p>
-                    <div class="health-bar-bg h-4 w-full mt-1"><div class="health-bar-fill player" style="width: ${playerHealthPercent}%"></div></div>
+                    <p class="font-bold text-xl" id="playerHealthText">${player.health.toFixed(0)} / ${player.maxHealth}</p>
+                    <div class="health-bar-bg h-4 w-full mt-1">
+                        <div class="health-bar-damage" id="playerHealthDamage"></div>
+                        <div class="health-bar-fill player" id="playerHealthFill"></div>
+                    </div>
                 </div>
                 <div class="text-left space-y-2">
                     <p><strong>Damage:</strong> ${player.damage.toFixed(1)}</p>
@@ -1588,22 +1745,22 @@
                     <p><strong>Attack Speed:</strong> ${player.attackSpeed.toFixed(2)}/s</p>
                 </div>`;
             
-            // Enemy Render
             const enemy = this.state.currentEnemy;
             if (!enemy) return;
-            const enemyHealthPercent = (enemy.health / enemy.maxHealth) * 100;
             const enemyIconInfo = this.config.enemyIcons[enemy.name] || this.config.enemyIcons.Default;
             const enemyIconHTML = enemyIconInfo.img
                 ? `<img src="${enemyIconInfo.img}" class="h-24 w-auto mx-auto mb-4 object-contain" alt="${enemy.name}">`
                 : `<i class="ph-bold ${enemyIconInfo.icon} ${enemyIconInfo.color} text-8xl mx-auto mb-4"></i>`;
             
             this.elements.enemyCombatant.innerHTML = `
-                <div class="combat-damage-text player-damage" id="enemyDamageText"></div>
                 ${enemyIconHTML}
                 <h3 class="text-2xl font-bold ${enemyIconInfo.color}">${enemy.name}</h3>
                 <div class="my-4">
-                    <p class="font-bold text-xl">${enemy.health.toFixed(0)} / ${enemy.maxHealth}</p>
-                    <div class="health-bar-bg h-4 w-full mt-1"><div class="health-bar-fill enemy" style="width: ${enemyHealthPercent}%"></div></div>
+                    <p class="font-bold text-xl" id="enemyHealthText">${enemy.health.toFixed(0)} / ${enemy.maxHealth}</p>
+                    <div class="health-bar-bg h-4 w-full mt-1">
+                        <div class="health-bar-damage" id="enemyHealthDamage"></div>
+                        <div class="health-bar-fill enemy" id="enemyHealthFill"></div>
+                    </div>
                 </div>
                 <div class="text-left space-y-2">
                     <p><strong>Damage:</strong> ${enemy.damage}</p>
@@ -1623,14 +1780,19 @@
                 btn.className = 'potion-btn pro-btn relative';
                 btn.dataset.slot = slot;
 
-                if (potionStack && this.state.isFighting) {
+                const onCooldown = this.state.potionCooldowns[slot];
+                btn.disabled = !potionStack || !this.state.isFighting || onCooldown;
+                if (onCooldown) btn.classList.add('opacity-50');
+
+                if (potionStack && potionStack.quantity > 0) {
                     const iconInfo = this.getItemIcon(potionStack.name);
                     const iconHTML = iconInfo.img ? `<img src="${iconInfo.img}" class="w-8 h-8 object-contain" alt="${potionStack.name}">` : `<i class="${iconInfo.icon} ${iconInfo.color} text-3xl"></i>`;
                     btn.innerHTML = `
                         ${iconHTML}
-                        <span class="absolute -top-1 -right-1 bg-gray-900 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center border-2 border-gray-700">${potionStack.quantity}</span>
+                        <span class="absolute -top-1 -right-1 bg-gray-900 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center border-2 border-gray-700">
+                            ${potionStack.quantity}
+                        </span>
                     `;
-                    btn.disabled = false;
                 } else {
                     btn.innerHTML = `<i class="ph ph-square text-gray-600 text-3xl"></i>`;
                     btn.disabled = true;
@@ -1710,17 +1872,13 @@
             return card;
         },
 
+        // REFACTORED: To dynamically update requirements based on quantity
         createRecipeCard(recipeData, type) {
             const iconInfo = this.getItemIcon(recipeData.name);
             const card = document.createElement('div');
+            card.className = 'recipe-card glass-pane rounded-xl p-4 flex flex-col md:flex-row items-center gap-4 transition-all duration-300';
+            
             const iconHTML = iconInfo.img ? `<img src="${iconInfo.img}" class="w-12 h-12 object-contain" alt="${recipeData.name}">` : `<i class="${iconInfo.icon} ${iconInfo.color} text-5xl"></i>`;
-            let requirementsHTML = '', canProcess = true;
-            for(const material in recipeData.recipe) {
-                const required = recipeData.recipe[material], has = this.state.inventory.materials[material] || 0;
-                let textColor = has >= required ? 'text-green-400' : (has > 0 ? 'text-yellow-400' : 'text-red-400');
-                requirementsHTML += `<li class="flex justify-between ${textColor}"><span>${material}</span> <span>${has} / ${required}</span></li>`;
-                if(has < required) canProcess = false;
-            }
             
             let statsHTML = '';
             if (recipeData.stats) {
@@ -1737,7 +1895,7 @@
                 }).join('');
             } else if (recipeData.effect) {
                 statsHTML = Object.entries(recipeData.effect).map(([eff, val]) => {
-                    if (eff === 'duration') return '';
+                    if (eff === 'duration') return `<p class="text-sm text-indigo-300 capitalize">${val/1000}s Duration</p>`;
                     let effectText = eff.replace(/([A-Z])/g, ' $1').trim();
                     let valueText = eff.includes('Percent') ? `${val}%` : `+${val}`;
                     return `<p class="text-sm text-sky-300 capitalize">${valueText} ${effectText}</p>`;
@@ -1745,7 +1903,6 @@
             }
 
             const buttonText = type.charAt(0).toUpperCase() + type.slice(1);
-            card.className = `recipe-card glass-pane rounded-xl p-4 flex flex-col md:flex-row items-center gap-4 transition-all duration-300 ${canProcess ? 'craftable' : ''}`;
             card.innerHTML = `
                 <div class="bg-gray-900/50 rounded-lg w-24 h-24 flex-shrink-0 flex items-center justify-center">${iconHTML}</div>
                 <div class="flex-grow text-center md:text-left">
@@ -1754,9 +1911,56 @@
                     <div class="mt-2">${statsHTML}</div>
                 </div>
                 <div class="w-full md:w-56 mt-4 md:mt-0 text-center">
-                    <ul class="text-sm text-gray-300 space-y-1">${requirementsHTML}</ul>
-                    <button class="pro-btn btn-success ${type}-btn w-full mt-3" data-recipe-name="${recipeData.name}" ${!canProcess ? 'disabled' : ''}>${buttonText}</button>
+                    <ul class="requirements-list text-sm text-gray-300 space-y-1"></ul>
+                    <div class="quantity-controls flex items-center justify-center gap-2 mt-3">
+                        <button class="pro-btn text-lg px-3 py-1 quantity-btn" data-action="decrease">-</button>
+                        <input type="number" class="quantity-input bg-gray-900 text-center font-bold text-lg rounded-md w-16 h-10 border-2 border-gray-700 focus:border-sky-400 focus:ring-0 focus:outline-none" value="1" min="1">
+                        <button class="pro-btn text-lg px-3 py-1 quantity-btn" data-action="increase">+</button>
+                    </div>
+                    <button class="pro-btn btn-success ${type}-btn w-full mt-2" data-recipe-name="${recipeData.name}">${buttonText}</button>
                 </div>`;
+            
+            const quantityInput = card.querySelector('.quantity-input');
+            const processButton = card.querySelector(`.${type}-btn`);
+            const requirementsList = card.querySelector('.requirements-list');
+
+            const updateCardState = () => {
+                const quantity = parseInt(quantityInput.value, 10) || 1;
+                
+                requirementsList.innerHTML = '';
+                let canProcessNow = true;
+                Object.entries(recipeData.recipe).forEach(([material, requiredPerItem]) => {
+                    const totalRequired = requiredPerItem * quantity;
+                    const has = this.state.inventory.materials[material] || 0;
+                    if (has < totalRequired) canProcessNow = false;
+
+                    const textColor = has >= totalRequired ? 'text-green-400' : (has > 0 ? 'text-yellow-400' : 'text-red-400');
+                    
+                    const li = document.createElement('li');
+                    li.className = `flex justify-between ${textColor}`;
+                    li.innerHTML = `<span>${material}</span> <span>${has} / ${totalRequired}</span>`;
+                    requirementsList.appendChild(li);
+                });
+
+                processButton.disabled = !canProcessNow;
+                card.classList.toggle('craftable', canProcessNow);
+            };
+
+            card.querySelectorAll('.quantity-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    let currentValue = parseInt(quantityInput.value, 10);
+                    if (btn.dataset.action === 'increase') {
+                        quantityInput.value = currentValue + 1;
+                    } else if (currentValue > 1) {
+                        quantityInput.value = currentValue - 1;
+                    }
+                    updateCardState();
+                });
+            });
+            quantityInput.addEventListener('input', updateCardState);
+            
+            updateCardState();
+
             return card;
         },
 
@@ -1787,16 +1991,16 @@
             }, 3000);
         },
         
-        showCombatDamage(targetElement, damage, type) {
-            const damageTextId = type === 'player-damage' ? 'enemyDamageText' : 'playerDamageText';
-            const damageEl = targetElement.querySelector(`#${damageTextId}`);
-            if (!damageEl) return;
+        showCombatText(targetParent, text, type) {
+            if (!targetParent) return;
+            const textEl = document.createElement('div');
+            textEl.className = `combat-text-popup ${type}`;
+            textEl.textContent = text;
+            targetParent.appendChild(textEl);
             
-            damageEl.textContent = `-${damage.toFixed(1)}`;
-            damageEl.classList.add('show');
             setTimeout(() => {
-                damageEl.classList.remove('show');
-            }, 1000);
+                textEl.remove();
+            }, 800);
         },
 
         showPotionEffectAnimation(effectType) {
@@ -1805,6 +2009,64 @@
             this.elements.playerCombatant.appendChild(effectDiv);
             effectDiv.addEventListener('animationend', () => effectDiv.remove());
         },
+
+        startHealthBarAnimation() {
+            if (this.state.animationFrameId) cancelAnimationFrame(this.state.animationFrameId);
+            const animate = () => {
+                this.updateHealthBars();
+                this.state.animationFrameId = requestAnimationFrame(animate);
+            };
+            this.state.animationFrameId = requestAnimationFrame(animate);
+        },
+
+        stopHealthBarAnimation() {
+            if (this.state.animationFrameId) {
+                cancelAnimationFrame(this.state.animationFrameId);
+                this.state.animationFrameId = null;
+            }
+        },
+
+        lerp(start, end, amt) {
+            return (1 - amt) * start + amt * end;
+        },
+
+        updateHealthBars() {
+            const lerpAmount = 0.1;
+
+            const player = this.state.player;
+            if (player.healthTarget !== null) {
+                player.totalStats.health = this.lerp(player.totalStats.health, player.healthTarget, lerpAmount);
+                if (Math.abs(player.totalStats.health - player.healthTarget) < 0.1) {
+                    player.totalStats.health = player.healthTarget;
+                    player.healthTarget = null;
+                }
+            }
+            player.damageIndicatorHealth = this.lerp(player.damageIndicatorHealth, player.totalStats.health, lerpAmount);
+
+            const playerHealthText = document.getElementById('playerHealthText');
+            const playerHealthFill = document.getElementById('playerHealthFill');
+            const playerHealthDamage = document.getElementById('playerHealthDamage');
+            
+            if (playerHealthFill && playerHealthDamage && playerHealthText) {
+                playerHealthFill.style.width = `${(player.totalStats.health / player.totalStats.maxHealth) * 100}%`;
+                playerHealthDamage.style.width = `${(player.damageIndicatorHealth / player.totalStats.maxHealth) * 100}%`;
+                playerHealthText.textContent = `${player.totalStats.health.toFixed(0)} / ${player.totalStats.maxHealth}`;
+            }
+
+            const enemy = this.state.currentEnemy;
+            if (enemy) {
+                enemy.damageIndicatorHealth = this.lerp(enemy.damageIndicatorHealth, enemy.health, lerpAmount);
+                const enemyHealthText = document.getElementById('enemyHealthText');
+                const enemyHealthFill = document.getElementById('enemyHealthFill');
+                const enemyHealthDamage = document.getElementById('enemyHealthDamage');
+
+                if (enemyHealthFill && enemyHealthDamage && enemyHealthText) {
+                    enemyHealthFill.style.width = `${(enemy.health / enemy.maxHealth) * 100}%`;
+                    enemyHealthDamage.style.width = `${(enemy.damageIndicatorHealth / enemy.maxHealth) * 100}%`;
+                    enemyHealthText.textContent = `${enemy.health.toFixed(0)} / ${enemy.maxHealth}`;
+                }
+            }
+        }
     };
 
     document.addEventListener('DOMContentLoaded', () => {
