@@ -1,0 +1,1459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Awesome Game - Pro Edition</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        /* * === PROFESSIONAL STYLING & LAYOUT ===
+         * This custom CSS complements Tailwind CSS to create a unique and polished design.
+         * We're defining a consistent theme, custom component styles, and fluid animations.
+         */
+
+        :root {
+            --bg-primary: #111827;      /* A deep, dark blue-gray for the main background */
+            --bg-secondary: #1f2937;   /* A slightly lighter gray for cards and panels */
+            --bg-tertiary: #374151;   /* For borders and dividers */
+            --accent-primary: #38bdf8; /* A vibrant sky blue for accents and highlights */
+            --accent-secondary: #818cf8; /* A soft indigo for gradients and secondary actions */
+            --text-primary: #f9fafb;     /* Bright white for primary text */
+            --text-secondary: #9ca3af; /* Muted gray for secondary text */
+            --success: #22c55e;        /* Green for success states */
+            --error: #ef4444;          /* Red for error states */
+            --warning: #facc15;        /* Yellow for warning/partial states */
+            --health-player: #22c55e;   /* Green for player health */
+            --health-enemy: #ef4444;   /* Red for enemy health */
+            --mana: #60a5fa;           /* Blue for mana bars */
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden; /* Prevent body scroll */
+        }
+
+        /* Main game layout using a responsive grid */
+        .game-layout {
+            display: grid;
+            grid-template-columns: 240px 1fr; /* Sidebar and main content */
+            grid-template-rows: 1fr;
+            height: 100vh; /* Full viewport height */
+            transition: grid-template-columns 0.3s ease;
+        }
+        
+        /* Main Content Area */
+        main {
+            overflow-y: auto; /* Allow only main content to scroll */
+        }
+
+        /* Responsive adjustments for smaller screens */
+        @media (max-width: 768px) {
+            body {
+                overflow-y: auto; /* Allow body scroll on mobile */
+            }
+            .game-layout {
+                grid-template-columns: 1fr; /* Stack content vertically */
+                grid-template-rows: 1fr auto; /* Content area and bottom nav */
+                height: auto;
+                min-height: 100vh;
+                padding-bottom: 80px; /* Space for the bottom nav */
+            }
+            main {
+                overflow-y: visible; /* Reset scroll for mobile layout */
+            }
+        }
+
+        /* Glassmorphism effect for sidebar and cards */
+        .glass-pane {
+            background: rgba(31, 41, 55, 0.6); /* Semi-transparent background */
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(55, 65, 81, 0.5);
+        }
+
+        /* Sidebar Navigation */
+        .game-sidebar {
+            grid-row: 1 / -1;
+            transition: transform 0.3s ease;
+            height: 100vh; /* Make sidebar full height */
+            overflow-y: auto; /* Allow sidebar to scroll if content overflows */
+        }
+
+        @media (max-width: 768px) {
+            .game-sidebar {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                z-index: 100;
+                grid-row: 2 / 3;
+                transform: translateY(0);
+                height: 80px;
+                border-top: 1px solid var(--bg-tertiary);
+                overflow-y: hidden;
+            }
+        }
+
+        /* Custom Navigation Buttons */
+        .nav-btn {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            border: 2px solid transparent;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .nav-btn:hover {
+            color: var(--text-primary);
+            background-color: var(--bg-tertiary);
+        }
+
+        .nav-btn.active {
+            color: var(--accent-primary);
+            border-color: var(--accent-primary);
+            background-color: rgba(56, 189, 248, 0.1);
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.2);
+        }
+        
+        @media (max-width: 768px) {
+            .nav-btn {
+                flex-direction: column;
+                gap: 0.25rem;
+                flex-grow: 1;
+                justify-content: center;
+                height: 100%;
+                border-radius: 0;
+                padding: 0.5rem;
+            }
+            .nav-btn.active {
+                border-color: transparent;
+                border-top: 2px solid var(--accent-primary);
+                background: linear-gradient(to top, rgba(56, 189, 248, 0.15), transparent);
+            }
+        }
+
+
+        /* Main Content Area Fade-in Animation */
+        .game-screen { display: none; }
+        .game-screen.active { display: block; animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Custom Button Style */
+        .pro-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            border: 1px solid var(--bg-tertiary);
+            cursor: pointer;
+        }
+        .pro-btn.btn-primary {
+            background-color: var(--accent-primary);
+            color: var(--bg-primary);
+            border-color: var(--accent-primary);
+        }
+        .pro-btn.btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(56, 189, 248, 0.3);
+        }
+        .pro-btn.btn-success {
+            background-color: var(--success);
+            color: var(--text-primary);
+            border-color: var(--success);
+        }
+        .pro-btn.btn-success:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(34, 197, 94, 0.3);
+        }
+        .pro-btn:disabled {
+            background-color: var(--bg-tertiary);
+            color: var(--text-secondary);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+            border-color: var(--bg-tertiary);
+        }
+
+        /* Toast Notification System */
+        #toast-container {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .toast {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 1.5rem;
+            border-radius: 0.75rem;
+            color: var(--text-primary);
+            border-left: 4px solid;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+        .toast.show { opacity: 1; transform: translateX(0); }
+        .toast.success { border-color: var(--success); background-color: var(--bg-secondary); }
+        .toast.error { border-color: var(--error); background-color: var(--bg-secondary); }
+        .toast.info { border-color: var(--accent-primary); background-color: var(--bg-secondary); }
+        .toast-icon { font-size: 1.5rem; }
+        .toast.success .toast-icon { color: var(--success); }
+        .toast.error .toast-icon { color: var(--error); }
+        .toast.info .toast-icon { color: var(--accent-primary); }
+
+        /* Crafting Specific Styles */
+        .recipe-card.craftable {
+            border-color: var(--success);
+            box-shadow: 0 0 15px rgba(34, 197, 94, 0.3);
+        }
+        .crafting-filter-btn {
+            background-color: var(--bg-secondary);
+            color: var(--text-secondary);
+        }
+        .crafting-filter-btn.active {
+            background-color: var(--accent-primary);
+            color: var(--bg-primary);
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.2);
+        }
+        
+        /* Health Bar */
+        .health-bar-bg {
+            background-color: var(--bg-tertiary);
+            border-radius: 0.25rem;
+            overflow: hidden;
+        }
+        .health-bar-fill {
+            height: 100%;
+            border-radius: 0.25rem;
+            transition: width 0.5s ease;
+        }
+        .health-bar-fill.player {
+             background: linear-gradient(to right, var(--health-player), #4ade80);
+        }
+        .health-bar-fill.enemy {
+             background: linear-gradient(to right, var(--health-enemy), #f87171);
+        }
+
+        /* Damage Popup */
+        .damage-popup {
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            padding: 0.5rem 1rem;
+            font-size: 1.25rem;
+            border-radius: 9999px;
+            font-weight: bold;
+            animation: floatAndFade 1.5s ease-out forwards;
+            pointer-events: none;
+            z-index: 10;
+            text-shadow: 0 0 5px black;
+        }
+        .damage-popup.player-damage {
+            background-color: rgba(34, 197, 94, 0.8); /* Green */
+            color: white;
+        }
+        .damage-popup.enemy-damage {
+            background-color: rgba(239, 68, 68, 0.8); /* Red */
+            color: white;
+        }
+
+        @keyframes floatAndFade {
+            from { opacity: 1; transform: translate(-50%, 0) scale(1); }
+            to { opacity: 0; transform: translate(-50%, -80px) scale(1.5); }
+        }
+
+        /* Smelting/Crafting Animation */
+        .processing-animation {
+            animation: shake 0.5s infinite alternate;
+        }
+        @keyframes shake {
+            from { transform: translateX(-2px); }
+            to { transform: translateX(2px); }
+        }
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-900">
+
+    <div id="toast-container"></div>
+
+    <div class="game-layout">
+        <!-- Sidebar Navigation (becomes bottom bar on mobile) -->
+        <aside class="game-sidebar glass-pane flex flex-col p-4">
+            <nav id="navContainer" class="flex flex-col md:flex-row lg:flex-col w-full gap-2">
+                <!-- Nav buttons will be injected here by JavaScript -->
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="p-4 sm:p-6 lg:p-8">
+            <!-- Header -->
+            <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <div>
+                    <h1 id="screenTitle" class="text-4xl font-extrabold text-white"></h1>
+                    <p id="screenSubtitle" class="text-lg text-gray-400">Welcome to your dashboard</p>
+                </div>
+                <div id="coinBalanceDisplay" class="flex items-center gap-3 bg-gray-800/50 border border-gray-700 py-2 px-5 rounded-full text-xl font-bold text-amber-400">
+                    <i class="ph-bold ph-coins text-2xl"></i>
+                    <span id="coinBalanceValue">0</span>
+                </div>
+            </header>
+
+            <!-- Screen Content -->
+            <div id="shopScreen" class="game-screen">
+                <div id="shopItemsContainer" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4"></div>
+            </div>
+
+            <div id="backpackScreen" class="game-screen">
+                 <h2 class="text-2xl font-bold text-gray-300 border-b border-gray-700 pb-2 mb-4">Crafted Items</h2>
+                 <div id="backpackCraftedContainer" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-4 mb-8"></div>
+                 
+                 <h2 class="text-2xl font-bold text-gray-300 border-b border-gray-700 pb-2 mb-4">Smelted Items</h2>
+                 <div id="backpackSmeltedContainer" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-4 mb-8"></div>
+
+                 <h2 class="text-2xl font-bold text-gray-300 border-b border-gray-700 pb-2 mb-4">Materials</h2>
+                 <div id="backpackMaterialsContainer" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-4"></div>
+            </div>
+
+            <div id="bankScreen" class="game-screen">
+                <div class="max-w-md mx-auto glass-pane p-8 rounded-xl">
+                    <h3 class="text-2xl font-bold text-center mb-2">The Bank</h3>
+                    <p class="text-gray-400 text-center mb-6">Deposit coins for safekeeping.</p>
+                    <div class="flex flex-col gap-4">
+                        <input type="number" id="depositAmount" class="text-center text-3xl font-bold p-4 h-20 bg-gray-900 text-amber-400 rounded-lg border-2 border-gray-700 focus:border-sky-400 focus:ring-0 focus:outline-none transition w-full" placeholder="0">
+                        <button id="depositBtn" class="pro-btn btn-success text-lg py-4 w-full">
+                            <i class="ph-bold ph-arrow-fat-lines-up text-2xl"></i>
+                            Deposit Coins
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="craftingScreen" class="game-screen">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2">
+                        <div class="flex items-center justify-between border-b border-gray-700 pb-2 mb-4">
+                            <h2 class="text-2xl font-bold text-gray-300">Available Blueprints</h2>
+                            <div id="craftingFilterContainer" class="flex gap-2">
+                                <!-- Crafting filter buttons injected here -->
+                            </div>
+                        </div>
+                        <div id="recipesContainer" class="space-y-4"></div>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-300 border-b border-gray-700 pb-2 mb-4">Your Materials</h2>
+                        <div id="craftingInventoryContainer" class="grid grid-cols-2 xl:grid-cols-3 gap-4"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="smeltingScreen" class="game-screen">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2">
+                        <h2 class="text-2xl font-bold text-gray-300 border-b border-gray-700 pb-2 mb-4">Smelting Recipes</h2>
+                        <div id="smeltingRecipesContainer" class="space-y-4"></div>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-300 border-b border-gray-700 pb-2 mb-4">Your Materials</h2>
+                        <div id="smeltingInventoryContainer" class="grid grid-cols-2 xl:grid-cols-3 gap-4"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="characterScreen" class="game-screen">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Stats Panel -->
+                    <div class="lg:col-span-1 glass-pane p-6 rounded-xl self-start">
+                        <h2 class="text-2xl font-bold mb-4">Player Stats</h2>
+                        <div id="playerStatsContainer" class="space-y-3"></div>
+                    </div>
+                    <!-- Equipment Panel -->
+                    <div class="lg:col-span-2">
+                         <h2 class="text-2xl font-bold text-gray-300 border-b border-gray-700 pb-2 mb-4">Equipment</h2>
+                         <div id="equipmentSlotsContainer" class="space-y-4 mb-8">
+                            <!-- Equipment slots will be shown here -->
+                         </div>
+                         <h2 class="text-2xl font-bold text-gray-300 border-b border-gray-700 pb-2 mb-4">Equippable Items</h2>
+                         <div id="equippableItemsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <!-- Equippable items from inventory -->
+                         </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="huntScreen" class="game-screen">
+                <!-- Map Selection -->
+                <div id="mapSelectionContainer">
+                    <h2 class="text-2xl font-bold text-gray-300 mb-4">Choose a Hunting Ground</h2>
+                    <div id="mapButtonsContainer" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- Map buttons are injected here -->
+                    </div>
+                </div>
+
+                <!-- Combat View -->
+                <div id="combatContainer" class="hidden">
+                    <button id="returnToMapBtn" class="pro-btn btn-primary mb-6">
+                        <i class="ph-bold ph-arrow-left"></i> Return to Maps
+                    </button>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                        <!-- Player Side -->
+                        <div id="playerCombatant" class="glass-pane p-6 rounded-xl text-center relative"></div>
+                        <!-- Enemy Side -->
+                        <div id="enemyCombatant" class="glass-pane p-6 rounded-xl text-center relative"></div>
+                    </div>
+                     <div id="combatControls" class="mt-8 flex justify-center items-center gap-4">
+                        <button id="startFightBtn" class="pro-btn btn-success text-xl px-8 py-4">
+                            <i class="ph-bold ph-swords"></i> Start
+                        </button>
+                        <button id="dodgeBtn" class="pro-btn btn-primary text-xl px-8 py-4">
+                            <i class="ph-bold ph-person-simple-run"></i> Dodge
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+    /**
+     * =================================================================
+     * AWESOME GAME - PROFESSIONAL EDITION JAVASCRIPT V11
+     * =================================================================
+     * This script follows a modular pattern to organize the game's logic,
+     * state, and UI manipulation for better readability and maintainability.
+     * NEW: Implemented local image icons for enemies and maps.
+     */
+    const App = {
+        // --- STATE ---
+        state: {
+            coins: 0,
+            inventory: {
+                materials: {},
+                crafted: {},
+            },
+            player: {
+                baseStats: {
+                    health: 100, maxHealth: 100,
+                    mana: 50, maxMana: 50,
+                    damage: 5, attackSpeed: 1.0, // attacks per second
+                    defense: 0,
+                },
+                equipped: {
+                    weapon1: null, weapon2: null,
+                    shield: null,
+                    armor: null,
+                    accessory1: null, accessory2: null,
+                },
+                totalStats: {},
+            },
+            currentScreen: 'shop',
+            craftingFilter: 'All',
+            currentEnemy: null,
+            isFighting: false,
+            playerAttackTimeout: null,
+            enemyAttackTimeout: null,
+        },
+
+        // --- CONFIGURATION ---
+        config: {
+            initialCoins: 10,
+            screens: {
+                shop: { title: 'The Shop', subtitle: 'Purchase raw materials.', icon: 'ph-storefront' },
+                backpack: { title: 'Your Backpack', subtitle: 'A collection of your items.', icon: 'ph-backpack' },
+                crafting: { title: 'Crafting Bench', subtitle: 'Combine materials to create new items.', icon: 'ph-hammer' },
+                smelting: { title: 'Smelting', subtitle: 'Refine raw materials.', icon: 'ph-fire' },
+                character: { title: 'Character', subtitle: 'View your stats and equipment.', icon: 'ph-user' },
+                hunt: { title: 'The Hunt', subtitle: 'Face dangerous foes for loot.', icon: 'ph-sword' },
+                bank: { title: 'The Bank', subtitle: 'Deposit and secure your coins.', icon: 'ph-bank' },
+            },
+            itemIcons: {
+                // Raw Materials
+                "Wood": { img: "assets/icons/materials/wood.png", color: "text-amber-600" },
+                "Sticks": { img: "assets/icons/materials/sticks.png", color: "text-amber-600" },
+                "Stone": { img: "assets/icons/materials/stone.png", color: "text-gray-500" },
+                "Leather Scrap": { img: "assets/icons/materials/leather_scrap.png", color: "text-orange-300" },
+                "String": { img: "assets/icons/materials/string.png", color: "text-gray-300" },
+                "Rope": { img: "assets/icons/materials/rope.png", color: "text-gray-300" },
+                "Bone": { img: "assets/icons/materials/bone.png", color: "text-gray-200" },
+                "Feathers": { img: "assets/icons/materials/feathers.png", color: "text-gray-400" },
+                "Fabric": { img: "assets/icons/materials/fabric.png", color: "text-blue-300" },
+                "Fang": { img: "assets/icons/materials/fang.png", color: "text-gray-100" },
+                "Wolf Pelt": { img: "assets/icons/materials/wolf_pelt.png", color: "text-gray-400" },
+                "Bear Fur": { img: "assets/icons/materials/bear_fur.png", color: "text-yellow-900" },
+                "Raw Iron": { img: "assets/icons/materials/raw_iron.png", color: "text-gray-600" },
+                "Raw Copper": { img: "assets/icons/materials/raw_copper.png", color: "text-orange-600" },
+                "Raw Silver": { img: "assets/icons/materials/raw_silver.png", color: "text-slate-400" },
+                "Raw Gold": { img: "assets/icons/materials/raw_gold.png", color: "text-yellow-500" },
+                "Metal Scrap": { img: "assets/icons/materials/metal_scrap.png", color: "text-slate-500" },
+                "Shard Fragment": { img: "assets/icons/materials/shard_fragment.png", color: "text-violet-400" },
+                "Enchanted Crystal": { img: "assets/icons/materials/enchanted_crystal.png", color: "text-rose-300" },
+                "Magical Dust": { img: "assets/icons/materials/magical_dust.png", color: "text-rose-300" },
+                "Hardening Dust": { img: "assets/icons/materials/hardening_dust.png", color: "text-rose-300" },
+
+                // Smelted Materials
+                "Refined Iron": { img: "assets/icons/smelted/refined_iron.png", color: "text-gray-400" },
+                "Refined Copper": { img: "assets/icons/smelted/refined_copper.png", color: "text-orange-400" },
+                "Refined Silver": { img: "assets/icons/smelted/refined_silver.png", color: "text-slate-200" },
+                "Refined Gold": { img: "assets/icons/smelted/refined_gold.png", color: "text-yellow-400" },
+                "Steel Sheet": { img: "assets/icons/smelted/steel_sheet.png", color: "text-slate-300" },
+                "Reinforced Steel Sheet": { img: "assets/icons/smelted/reinforced_steel_sheet.png", color: "text-slate-100" },
+                "Pure Gem": { img: "assets/icons/smelted/pure_gem.png", color: "text-slate-100" },
+
+                // Crafted Items
+                "Wooden Sword": { img: "assets/icons/crafted/wooden_sword.png", color: "text-amber-800" },
+                "Iron Sword": { img: "assets/icons/crafted/iron_sword.png", color: "text-gray-400" },
+                "Silverfang Sword": { img: "assets/icons/crafted/silverfang_sword.png", color: "text-slate-200" },
+                "Advocate Greatsword": { img: "assets/icons/crafted/advocate_greatsword.png", color: "text-slate-200" },
+                "Shard Cleaver": { img: "assets/icons/crafted/shard_cleaver.png", color: "text-slate-200" },
+                "Enchanted Sword": { img: "assets/icons/crafted/enchanted_sword.png", color: "text-slate-200" },
+
+                "Basic Shield": { img: "assets/icons/crafted/basic_shield.png", color: "text-amber-700" },
+                "Rounded Shield": { img: "assets/icons/crafted/rounded_shield.png", color: "text-slate-300" },
+                "Pointed Shield": { img: "assets/icons/crafted/pointed_shield.png", color: "text-slate-300" },
+                "Ravel Shield": { img: "assets/icons/crafted/ravel_shield.png", color: "text-slate-300" },
+                "Iron Shield": { img: "assets/icons/crafted/iron_shield.png", color: "text-slate-300" },
+                "Silver Shield": { img: "assets/icons/crafted/silver_shield.png", color: "text-slate-300" },
+                "Reinforced Shield": { img: "assets/icons/crafted/reinforced_shield.png", color: "text-slate-300" },
+                "Regal Shield": { img: "assets/icons/crafted/regal_shield.png", color: "text-sky-300" },
+                "Redcliff Shield": { img: "assets/icons/crafted/redcliff_shield.png", color: "text-sky-300" },
+                "Rustman Shield": { img: "assets/icons/crafted/rustman_shield.png", color: "text-sky-300" },
+                "Holy Shield": { img: "assets/icons/crafted/holy_shield.png", color: "text-sky-300" },
+
+                "Ironbourne Armor": { img: "assets/icons/crafted/ironbourne_armor.png", color: "text-gray-500" },
+                "Beast Armor": { img: "assets/icons/crafted/beast_armor.png", color: "text-yellow-900" },
+                "Stone Ring": { img: "assets/icons/crafted/stone_ring.png", color: "text-gray-500" },
+                "Golden Ring": { img: "assets/icons/crafted/golden_ring.png", color: "text-yellow-400" },
+                "Windtalker's Necklace": { img: "assets/icons/crafted/windtalkers_necklace.png", color: "text-cyan-300" },
+                
+                "Default": { img: "assets/icons/placeholder/none.png", color: "text-gray-400" }
+            },
+            enemyIcons: {
+                "You": { img: "assets/icons/enemies/player.png", color: "text-green-400" },
+                "Wild Boar": { img: "assets/icons/enemies/wild_boar.png", color: "text-pink-400" },
+                "Wild Wolf": { img: "assets/icons/enemies/wild_wolf.png", color: "text-gray-400" },
+                "Wild Bear": { img: "assets/icons/enemies/wild_bear.png", color: "text-amber-800" },
+                "Red Fox": { img: "assets/icons/enemies/red_fox.png", color: "text-orange-500" },
+                "Bunny": { img: "assets/icons/enemies/bunny.png", color: "text-gray-200" },
+                "Pale Wolf": { img: "assets/icons/enemies/pale_wolf.png", color: "text-slate-300" },
+                "Giant Hen": { img: "assets/icons/enemies/giant_hen.png", color: "text-red-300" },
+                "Rock Beetle": { img: "assets/icons/enemies/rock_beetle.png", color: "text-gray-600" },
+                "Fiery Wasp": { img: "assets/icons/enemies/fiery_wasp.png", color: "text-yellow-400" },
+                "Large Ladybug": { img: "assets/icons/enemies/large_ladybug.png", color: "text-red-500" },
+                "Ent": { img: "assets/icons/enemies/ent.png", color: "text-green-600" },
+                "Mimic Chest": { img: "assets/icons/enemies/mimic_chest.png", color: "text-amber-600" },
+                "Corrupted Ent": { img: "assets/icons/enemies/corrupted_ent.png", color: "text-purple-500" },
+                "Default": { img: "assets/icons/placeholder/none.png", color: "text-gray-500" }
+            },
+            mapIcons: {
+                "Grassy Plains": { img: "assets/icons/maps/grassy_plains.png" },
+                "Redwood Valley": { img: "assets/icons/maps/redwood_valley.png" },
+                "Enchanted Forest": { img: "assets/icons/maps/enchanted_forest.png" },
+            },
+            shopStock: [
+                { name: "Leather Scrap", price: 60, type: 'Material' }, { name: "Wood", price: 35, type: 'Material' },
+                { name: "Sticks", price: 10, type: 'Material' }, { name: "Stone", price: 40, type: 'Material' },
+                { name: "Raw Iron", price: 150, type: 'Material' }, { name: "Raw Gold", price: 300, type: 'Material' },
+                { name: "Raw Copper", price: 160, type: 'Material' }, { name: "Raw Silver", price: 280, type: 'Material' },
+                { name: "String", price: 25, type: 'Material' }, { name: "Metal Scrap", price: 175, type: 'Material' },
+                { name: "Rope", price: 90, type: 'Material' }, 
+                { name: "Enchanted Crystal", price: 1200, type: 'Material' }, { name: "Magical Dust", price: 399, type: 'Material' } , 
+                { name: "Bone", price: 70, type: 'Material' }, { name: "Feathers", price: 25, type: 'Material' },
+                { name: "Hardening Dust", price: 120, type: 'Material' }, { name: "Shard Fragment", price: 299, type: 'Material' },
+                { name: "Fabric", price: 95, type: 'Material' }, { name: "Fang", price: 58, type: 'Material' }, 
+                { name: "Wolf Pelt", price: 135, type: 'Material' }, { name: "Bear Fur", price: 280, type: 'Material' },
+            ],
+            smeltingRecipes: [
+                { name: "Refined Iron", recipe: { "Raw Iron": 3, "Hardening Dust": 1 } },
+                { name: "Refined Gold", recipe: { "Raw Gold": 3, "Hardening Dust": 1 } },
+                { name: "Refined Copper", recipe: { "Raw Copper": 3, "Hardening Dust": 1 } },
+                { name: "Refined Silver", recipe: { "Raw Silver": 3 } },
+                { name: "Steel Sheet", recipe: { "Metal Scrap": 4, "Raw Iron": 2 } },
+                { name: "Reinforced Steel Sheet", recipe: { "Steel Sheet": 2, "Refined Copper": 4 } },
+                { name: "Pure Gem", recipe: { "Magical Dust": 3, "Shard Fragment": 3, "Enchanted Crystal": 1 } },
+            ],
+            craftingRecipes: [
+                { name: "Wooden Sword", slot: "weapon", stats: { damage: 1.5 }, recipe: { "Wood": 2, "Sticks": 3, "String": 2 } },
+                { name: "Iron Sword", slot: "weapon", stats: { damage: 2 }, recipe: { "Refined Iron": 4, "Raw Iron": 2, "Wood": 3} },
+                { name: "Silverfang Sword", slot: "weapon", stats: { damage: 2.5, attackSpeedModifier: 0.45 }, recipe: { "Fang": 8, "Refined Silver": 8 } },
+                { name: "Advocate Greatsword", slot: "weapon", stats: { damage: 12, attackSpeedModifier: -0.65 }, recipe: { "Reinforced Steel Sheet": 3, "Refined Iron": 2 } },
+                { name: "Shard Cleaver", slot: "weapon", stats: { damage: 4.2, attackSpeedModifier: 0.20 }, recipe: { "Shard Fragment": 12} },
+                { name: "Enchanted Sword", slot: "weapon", stats: { damage: 6, attackSpeedModifier: 0.80 }, recipe: { "Shard Fragment": 6, "Magical Dust": 2, "Enchanted Crystal": 1} },
+                
+                { name: "Basic Shield", slot: "shield", stats: { defense: 8, maxHealth: 5, damage: 0.45 }, recipe: { "Wood": 3, "Refined Iron": 2, "Metal Scrap": 1 } },
+                { name: "Rounded Shield", slot: "shield", stats: { defense: 7.5, maxHealth: 10, damage: 0.55 }, recipe: { "Wood": 3, "Refined Iron": 3, "Rope": 1 } },
+                { name: "Pointed Shield", slot: "shield", stats: { defense: 6, maxHealth: 5, damage: 2 }, recipe: { "Wood": 3, "Refined Iron": 3, "Fang": 1 } },
+                { name: "Ravel Shield", slot: "shield", stats: { defense: 8, maxHealth: 8, attackSpeedModifier: 0.12 }, recipe: { "Wood": 5, "Refined Gold": 3, "Leather Scrap": 2 } },
+                { name: "Iron Shield", slot: "shield", stats: { defense: 12, maxHealth: 10.50, damage: 1 }, recipe: { "Metal Scrap": 8, "Refined Iron": 5 } },
+                { name: "Silver Shield", slot: "shield", stats: { defense: 10, maxHealth: 9, attackSpeedModifier: 0.20 }, recipe: { "Steel Sheet": 2, "Refined Silver": 6 } },
+                { name: "Reinforced Shield", slot: "shield", stats: { defense: 25, maxHealth: 30, attackSpeedModifier: -0.35  }, recipe: { "Reinforced Steel Sheet": 3, "Refined Iron": 3, "Hardening Dust": 2 } },
+                { name: "Regal Shield", slot: "shield", stats: { defense: 15, maxHealth: 15, damage: 4 }, recipe: { "Refined Gold": 3, "Refined Silver": 3, "Refined Iron": 3 } },
+                { name: "Redcliff Shield", slot: "shield", stats: { defense: 20, maxHealth: 15, attackSpeedModifier: 0.25 }, recipe: { "Wolf Pelt": 12, "Refined Gold": 5, "Refined Iron": 3 } },
+                { name: "Rustman Shield", slot: "shield", stats: { defense: 18, maxHealth: 20, attackSpeedModifier: 0.50, damage: 4 }, recipe: { "Fang": 20, "Bear Fur": 4, "Reinforced Steel Sheet": 5 } },
+                { name: "Holy Shield", slot: "shield", stats: { defense: 25, maxHealth: 50 }, recipe: { "Fang": 8, "Refined Gold": 5, "Reinforced Steel Sheet": 3,"Enchanted Crystal": 1 } },
+
+
+                { name: "Ironbourne Armor", slot: "armor", stats: { defense: 15, maxHealth: 30 }, recipe: { "Refined Iron": 5, "Steel Sheet": 1 } },
+                { name: "Beast Armor", slot: "armor", stats: { defense: 5, maxHealth: 3, damage: 5 }, recipe: { "Bear Fur": 6, "Shard Fragment": 12, "Fabric": 5 } },
+                
+                { name: "Stone Ring", slot: "accessory", stats: { defense: 5, maxHealth: 10 }, recipe: { "Stone": 3, "String": 2 } },
+                { name: "Golden Ring", slot: "accessory", stats: { damage: 0.5, attackSpeedModifier: 0.07 }, recipe: { "Refined Gold": 4 } },
+                { name: "Windtalker's Necklace", slot: "accessory", stats: { attackSpeedModifier: 0.12 }, recipe: { "Feathers": 12, "Shard Fragment": 9, "Bone": 3 } },
+            ],
+            maps: {
+                "Grassy Plains": {
+                    enemies: [
+                        { name: "Bunny", health: 15, mana: 0, damage: 2, defense: 0, attackSpeed: 1.0, loot: { coins: [1, 5], materials: { "Feathers": { chance: 0.9, amount: [1, 2] } } } },
+                        { name: "Wild Boar", health: 30, mana: 0, damage: 4, defense: 1, attackSpeed: 0.8, loot: { coins: [5, 15], materials: { "Bone": { chance: 0.5, amount: [1, 2] }, "Leather Scrap": { chance: 0.8, amount: [1, 3] } } } },
+                        { name: "Red Fox", health: 28, mana: 0, damage: 5, defense: 1, attackSpeed: 1.0, loot: { coins: [8, 18], materials: { "Fang": { chance: 0.5, amount: [1, 2] }, "Bone": { chance: 0.3, amount: [1, 1] } } } },
+                        { name: "Wild Wolf", health: 25, mana: 0, damage: 6, defense: 0, attackSpeed: 1.2, loot: { coins: [10, 20], materials: { "Wolf Pelt": { chance: 0.4, amount: [1, 1] }, "Fang": { chance: 0.2, amount: [1, 1] } } } },
+                        { name: "Giant Hen", health: 40, mana: 0, damage: 7, defense: 2, attackSpeed: 0.7, loot: { coins: [20, 40], materials: { "Feathers": { chance: 1.0, amount: [2, 5] }, "Bone": { chance: 0.5, amount: [1, 3] } } } },
+                        { name: "Wild Bear", health: 50, mana: 0, damage: 8, defense: 2, attackSpeed: 0.6, loot: { coins: [25, 50], materials: { "Bear Fur": { chance: 0.6, amount: [1, 2] }, "Bone": { chance: 0.7, amount: [1, 4] } } } },
+                        { name: "Pale Wolf", health: 60, mana: 0, damage: 10, defense: 3, attackSpeed: 1.1, loot: { coins: [40, 70], materials: { "Wolf Pelt": { chance: 0.8, amount: [1, 2] }, "Fang": { chance: 0.6, amount: [1, 3] } } } },
+                    ]
+                },
+                "Redwood Valley": {
+                    enemies: [
+                        { name: "Rock Beetle", health: 40, mana: 0, damage: 5, defense: 5, attackSpeed: 0.5, loot: { coins: [20, 40], materials: { "Shard Fragment": { chance: 0.5, amount: [1, 2] }, "Raw Iron": { chance: 0.3, amount: [1, 1] } } } },
+                        { name: "Fiery Wasp", health: 20, mana: 0, damage: 8, defense: 0, attackSpeed: 1.5, loot: { coins: [15, 30], materials: { "Feathers": { chance: 0.8, amount: [2, 4] }, "String": { chance: 0.5, amount: [1, 2] } } } },
+                        { name: "Large Ladybug", health: 35, mana: 0, damage: 6, defense: 3, attackSpeed: 0.7, loot: { coins: [18, 35], materials: { "Fabric": { chance: 0.6, amount: [1, 3] } } } },
+                    ]
+                },
+                "Enchanted Forest": {
+                    enemies: [
+                        { name: "Ent", health: 80, mana: 20, damage: 10, defense: 4, attackSpeed: 0.4, loot: { coins: [50, 100], materials: { "Wood": { chance: 1.0, amount: [5, 10] }, "Hardening Dust": { chance: 0.2, amount: [1, 1] } } } },
+                        { name: "Mimic Chest", health: 60, mana: 0, damage: 12, defense: 2, attackSpeed: 0.8, loot: { coins: [100, 200], materials: { "Raw Gold": { chance: 0.5, amount: [1, 3] }, "Metal Scrap": { chance: 0.8, amount: [2, 5] } } } },
+                        { name: "Corrupted Ent", health: 100, mana: 30, damage: 15, defense: 5, attackSpeed: 0.3, loot: { coins: [80, 150], materials: { "Wood": { chance: 1.0, amount: [3, 8] }, "Hardening Dust": { chance: 0.5, amount: [1, 2] }, "Shard Fragment": { chance: 0.3, amount: [1, 3] } } } },
+                    ]
+                }
+            }
+        },
+
+        // --- UI ELEMENTS ---
+        elements: {},
+
+        init() {
+            this.cacheDOMElements();
+            this.state.coins = this.config.initialCoins;
+            this.calculateTotalStats();
+            this.bindEvents();
+            this.render();
+        },
+
+        cacheDOMElements() {
+            this.elements = {
+                navContainer: document.getElementById('navContainer'),
+                coinBalanceValue: document.getElementById('coinBalanceValue'),
+                screenTitle: document.getElementById('screenTitle'),
+                screenSubtitle: document.getElementById('screenSubtitle'),
+                shopScreen: document.getElementById('shopScreen'),
+                shopItemsContainer: document.getElementById('shopItemsContainer'),
+                backpackScreen: document.getElementById('backpackScreen'),
+                backpackCraftedContainer: document.getElementById('backpackCraftedContainer'),
+                backpackSmeltedContainer: document.getElementById('backpackSmeltedContainer'),
+                backpackMaterialsContainer: document.getElementById('backpackMaterialsContainer'),
+                bankScreen: document.getElementById('bankScreen'),
+                depositAmountInput: document.getElementById('depositAmount'),
+                depositBtn: document.getElementById('depositBtn'),
+                craftingScreen: document.getElementById('craftingScreen'),
+                craftingFilterContainer: document.getElementById('craftingFilterContainer'),
+                recipesContainer: document.getElementById('recipesContainer'),
+                craftingInventoryContainer: document.getElementById('craftingInventoryContainer'),
+                smeltingScreen: document.getElementById('smeltingScreen'),
+                smeltingRecipesContainer: document.getElementById('smeltingRecipesContainer'),
+                smeltingInventoryContainer: document.getElementById('smeltingInventoryContainer'),
+                characterScreen: document.getElementById('characterScreen'),
+                playerStatsContainer: document.getElementById('playerStatsContainer'),
+                equipmentSlotsContainer: document.getElementById('equipmentSlotsContainer'),
+                equippableItemsContainer: document.getElementById('equippableItemsContainer'),
+                huntScreen: document.getElementById('huntScreen'),
+                mapSelectionContainer: document.getElementById('mapSelectionContainer'),
+                mapButtonsContainer: document.getElementById('mapButtonsContainer'),
+                combatContainer: document.getElementById('combatContainer'),
+                returnToMapBtn: document.getElementById('returnToMapBtn'),
+                playerCombatant: document.getElementById('playerCombatant'),
+                enemyCombatant: document.getElementById('enemyCombatant'),
+                combatControls: document.getElementById('combatControls'),
+                startFightBtn: document.getElementById('startFightBtn'),
+                dodgeBtn: document.getElementById('dodgeBtn'),
+            };
+        },
+
+        bindEvents() {
+            this.elements.navContainer.addEventListener('click', (e) => {
+                const navButton = e.target.closest('.nav-btn');
+                if (navButton && navButton.dataset.screen) {
+                    this.stopCombat();
+                    this.state.currentScreen = navButton.dataset.screen;
+                    this.render();
+                }
+            });
+            this.elements.depositBtn.addEventListener('click', () => this.depositCoins(parseInt(this.elements.depositAmountInput.value, 10)));
+            this.elements.shopItemsContainer.addEventListener('click', (e) => {
+                const btn = e.target.closest('.buy-btn');
+                if (btn && !btn.disabled) this.buyItem(btn.dataset.itemName);
+            });
+            this.elements.recipesContainer.addEventListener('click', (e) => {
+                const btn = e.target.closest('.craft-btn');
+                if(btn && !btn.disabled) this.craftItem(btn.dataset.recipeName, btn);
+            });
+            this.elements.smeltingRecipesContainer.addEventListener('click', (e) => {
+                const btn = e.target.closest('.smelt-btn');
+                if(btn && !btn.disabled) this.smeltItem(btn.dataset.recipeName, btn);
+            });
+            this.elements.craftingFilterContainer.addEventListener('click', (e) => {
+                const btn = e.target.closest('.crafting-filter-btn');
+                if (btn) {
+                    this.state.craftingFilter = btn.dataset.filter;
+                    this.renderCraftingScreen();
+                }
+            });
+            this.elements.mapButtonsContainer.addEventListener('click', (e) => {
+                const btn = e.target.closest('.map-btn');
+                if (btn) this.startHunt(btn.dataset.mapName);
+            });
+            this.elements.returnToMapBtn.addEventListener('click', () => {
+                this.stopCombat();
+                this.elements.combatContainer.classList.add('hidden');
+                this.elements.mapSelectionContainer.style.display = 'block';
+                this.state.currentEnemy = null;
+            });
+            this.elements.dodgeBtn.addEventListener('click', () => this.findNewOpponent());
+            this.elements.startFightBtn.addEventListener('click', () => this.startCombat());
+            this.elements.equipmentSlotsContainer.addEventListener('click', (e) => {
+                const btn = e.target.closest('.unequip-btn');
+                if(btn) this.unequipItem(btn.dataset.slot);
+            });
+            this.elements.equippableItemsContainer.addEventListener('click', (e) => {
+                const btn = e.target.closest('.equip-btn');
+                if(btn) this.equipItem(btn.dataset.itemName);
+            });
+        },
+
+        // --- GAME LOGIC METHODS ---
+        
+        depositCoins(amount) {
+            if (isNaN(amount) || amount <= 0) {
+                this.showToast("Please enter a valid positive amount.", 'error'); return;
+            }
+            this.state.coins += amount;
+            this.showToast(`You deposited ${amount} coins.`, 'success');
+            this.elements.depositAmountInput.value = '';
+            this.renderCoinBalance();
+        },
+        
+        buyItem(itemName) {
+            const itemData = this.config.shopStock.find(item => item.name === itemName);
+            if (!itemData) return;
+
+            if (this.state.coins >= itemData.price) {
+                this.state.coins -= itemData.price;
+                this.state.inventory.materials[itemName] = (this.state.inventory.materials[itemName] || 0) + 1;
+                this.showToast(`Purchased 1x ${itemName}.`, 'success');
+                this.render();
+            } else {
+                this.showToast(`Not enough coins. You need ${itemData.price}.`, 'error');
+            }
+        },
+
+        craftItem(recipeName, buttonElement) {
+            const recipeData = this.config.craftingRecipes.find(r => r.name === recipeName);
+            if(!recipeData) return;
+            const canCraft = Object.entries(recipeData.recipe).every(([mat, req]) => (this.state.inventory.materials[mat] || 0) >= req);
+            
+            if(canCraft) {
+                buttonElement.disabled = true;
+                buttonElement.innerHTML = `<i class="ph ph-circle-notch spinner"></i> Crafting...`;
+                const card = buttonElement.closest('.recipe-card');
+                const iconContainer = card.querySelector('.bg-gray-900\\/50');
+                if (iconContainer) iconContainer.classList.add('processing-animation');
+
+
+                setTimeout(() => {
+                    Object.entries(recipeData.recipe).forEach(([mat, req]) => {
+                        this.state.inventory.materials[mat] -= req;
+                        if(this.state.inventory.materials[mat] === 0) delete this.state.inventory.materials[mat];
+                    });
+                    this.state.inventory.crafted[recipeName] = (this.state.inventory.crafted[recipeName] || 0) + 1;
+                    this.showToast(`Successfully crafted 1x ${recipeName}!`, 'success');
+                    this.render();
+                }, 2000);
+            } else {
+                this.showToast(`Cannot craft. Missing materials.`, 'error');
+            }
+        },
+
+        smeltItem(recipeName, buttonElement) {
+            const recipeData = this.config.smeltingRecipes.find(r => r.name === recipeName);
+            if(!recipeData) return;
+            const canSmelt = Object.entries(recipeData.recipe).every(([mat, req]) => (this.state.inventory.materials[mat] || 0) >= req);
+            
+            if(canSmelt) {
+                buttonElement.disabled = true;
+                buttonElement.innerHTML = `<i class="ph ph-circle-notch spinner"></i> Smelting...`;
+                const card = buttonElement.closest('.recipe-card');
+                const iconContainer = card.querySelector('.bg-gray-900\\/50');
+                if (iconContainer) iconContainer.classList.add('processing-animation');
+
+                setTimeout(() => {
+                    Object.entries(recipeData.recipe).forEach(([mat, req]) => {
+                        this.state.inventory.materials[mat] -= req;
+                        if(this.state.inventory.materials[mat] === 0) delete this.state.inventory.materials[mat];
+                    });
+                    this.state.inventory.materials[recipeName] = (this.state.inventory.materials[recipeName] || 0) + 1;
+                    this.showToast(`Successfully smelted 1x ${recipeName}!`, 'success');
+                    this.render(); 
+                }, 2000);
+
+            } else {
+                this.showToast(`Cannot smelt. Missing materials.`, 'error');
+            }
+        },
+
+        calculateTotalStats() {
+            const total = JSON.parse(JSON.stringify(this.state.player.baseStats));
+            let attackSpeedMultiplier = 1.0;
+            
+            Object.values(this.state.player.equipped).forEach(itemName => {
+                if (!itemName) return;
+                const itemData = this.config.craftingRecipes.find(r => r.name === itemName);
+                if (!itemData || !itemData.stats) return;
+
+                for (const stat in itemData.stats) {
+                    if (stat === 'attackSpeedModifier') {
+                        attackSpeedMultiplier += itemData.stats[stat];
+                    } else {
+                        total[stat] = (total[stat] || 0) + itemData.stats[stat];
+                    }
+                }
+            });
+            
+            total.attackSpeed *= attackSpeedMultiplier;
+            
+            if (total.health > total.maxHealth) {
+                total.health = total.maxHealth;
+            }
+
+            this.state.player.totalStats = total;
+        },
+
+        equipItem(itemName) {
+            const itemData = this.config.craftingRecipes.find(r => r.name === itemName);
+            if (!itemData) return;
+
+            const oldMaxHealth = this.state.player.totalStats.maxHealth;
+
+            let targetSlot = null;
+            if (itemData.slot === 'weapon') {
+                if (!this.state.player.equipped.weapon1) targetSlot = 'weapon1';
+                else if (!this.state.player.equipped.weapon2) targetSlot = 'weapon2';
+            } else if (itemData.slot === 'accessory') {
+                if (!this.state.player.equipped.accessory1) targetSlot = 'accessory1';
+                else if (!this.state.player.equipped.accessory2) targetSlot = 'accessory2';
+            } else { 
+                if (!this.state.player.equipped[itemData.slot]) targetSlot = itemData.slot;
+            }
+
+            if (!targetSlot) {
+                this.showToast(`No empty ${itemData.slot} slots available.`, 'error'); return;
+            }
+
+            this.state.inventory.crafted[itemName]--;
+            if (this.state.inventory.crafted[itemName] === 0) delete this.state.inventory.crafted[itemName];
+            this.state.player.equipped[targetSlot] = itemName;
+            
+            this.showToast(`Equipped ${itemName}.`, 'success');
+            
+            this.calculateTotalStats();
+
+            const newMaxHealth = this.state.player.totalStats.maxHealth;
+            const healthGain = newMaxHealth - oldMaxHealth;
+            if (healthGain > 0) {
+                this.state.player.totalStats.health += healthGain;
+            }
+
+            this.renderCharacterScreen();
+        },
+
+        unequipItem(slot) {
+            const itemName = this.state.player.equipped[slot];
+            if (!itemName) return;
+
+            this.state.player.equipped[slot] = null;
+            this.state.inventory.crafted[itemName] = (this.state.inventory.crafted[itemName] || 0) + 1;
+            
+            this.showToast(`Unequipped ${itemName}.`, 'success');
+            
+            this.calculateTotalStats();
+            this.renderCharacterScreen();
+        },
+
+        startHunt(mapName) {
+            this.stopCombat();
+            const mapData = this.config.maps[mapName];
+            if (!mapData) return;
+            const enemyList = mapData.enemies;
+            const randomEnemy = JSON.parse(JSON.stringify(enemyList[Math.floor(Math.random() * enemyList.length)]));
+            randomEnemy.maxHealth = randomEnemy.health;
+            this.state.currentEnemy = randomEnemy;
+            this.elements.mapSelectionContainer.style.display = 'none';
+            this.elements.combatContainer.classList.remove('hidden');
+            this.elements.combatControls.style.display = 'flex';
+            this.elements.startFightBtn.disabled = false;
+            this.renderCombatView();
+        },
+        
+        findNewOpponent() {
+            if (!this.state.currentEnemy) return;
+            const currentMapName = Object.keys(this.config.maps).find(mapName => 
+                this.config.maps[mapName].enemies.some(e => e.name === this.state.currentEnemy.name)
+            );
+            if (currentMapName) {
+                this.startHunt(currentMapName);
+                this.showToast('Found a new opponent!', 'info');
+            }
+        },
+
+        startCombat() {
+            if (this.state.isFighting) return;
+            this.state.isFighting = true;
+            this.elements.combatControls.style.display = 'none';
+            const player = this.state.player.totalStats;
+            const enemy = this.state.currentEnemy;
+            this.state.playerAttackTimeout = setTimeout(() => this.playerAttack(), 1000 / player.attackSpeed);
+            this.state.enemyAttackTimeout = setTimeout(() => this.enemyAttack(), 1000 / enemy.attackSpeed);
+        },
+
+        stopCombat() {
+            this.state.isFighting = false;
+            clearTimeout(this.state.playerAttackTimeout);
+            clearTimeout(this.state.enemyAttackTimeout);
+            this.state.playerAttackTimeout = null;
+            this.state.enemyAttackTimeout = null;
+        },
+
+        playerAttack() {
+            if (!this.state.isFighting) return;
+            const player = this.state.player.totalStats;
+            const enemy = this.state.currentEnemy;
+
+            const defenseReduction = Math.min(100, enemy.defense) / 100;
+            const damageDealt = Math.max(0, player.damage * (1 - defenseReduction));
+
+            enemy.health = Math.max(0, enemy.health - damageDealt);
+            this.showDamagePopup(this.elements.enemyCombatant, damageDealt.toFixed(1), 'player-damage');
+            this.renderCombatView();
+            if (enemy.health <= 0) {
+                this.endCombat(true);
+            } else {
+                this.state.playerAttackTimeout = setTimeout(() => this.playerAttack(), 1000 / player.attackSpeed);
+            }
+        },
+
+        enemyAttack() {
+            if (!this.state.isFighting) return;
+            const player = this.state.player.totalStats;
+            const enemy = this.state.currentEnemy;
+
+            const defenseReduction = Math.min(100, player.defense) / 100;
+            const damageTaken = Math.max(0, enemy.damage * (1 - defenseReduction));
+
+            player.health = Math.max(0, player.health - damageTaken);
+            this.showDamagePopup(this.elements.playerCombatant, damageTaken.toFixed(1), 'enemy-damage');
+            this.renderCombatView();
+            if (player.health <= 0) {
+                this.endCombat(false);
+            } else {
+                this.state.enemyAttackTimeout = setTimeout(() => this.enemyAttack(), 1000 / enemy.attackSpeed);
+            }
+        },
+
+        endCombat(playerWon) {
+            this.stopCombat();
+            if (playerWon) {
+                const loot = this.state.currentEnemy.loot;
+                const coinReward = Math.floor(Math.random() * (loot.coins[1] - loot.coins[0] + 1)) + loot.coins[0];
+                this.state.coins += coinReward;
+                let lootMsg = `Gained ${coinReward} coins`;
+
+                Object.entries(loot.materials).forEach(([mat, data]) => {
+                    if (Math.random() < data.chance) {
+                        const amount = Math.floor(Math.random() * (data.amount[1] - data.amount[0] + 1)) + data.amount[0];
+                        this.state.inventory.materials[mat] = (this.state.inventory.materials[mat] || 0) + amount;
+                        lootMsg += ` & ${amount}x ${mat}`;
+                    }
+                });
+                this.showToast(`You defeated the ${this.state.currentEnemy.name}!`, 'success');
+                this.showToast(lootMsg, 'info');
+
+            } else {
+                const penalty = Math.floor(Math.random() * 101) + 50;
+                this.state.coins = Math.max(0, this.state.coins - penalty);
+                this.showToast(`You were defeated... Lost ${penalty} coins.`, 'error');
+            }
+            this.state.player.totalStats.health = this.state.player.totalStats.maxHealth;
+            this.elements.combatControls.style.display = 'flex';
+            this.elements.startFightBtn.disabled = true;
+            this.renderCoinBalance();
+        },
+
+        // --- RENDER & UI METHODS ---
+
+        render() {
+            this.renderNavigation();
+            this.renderCoinBalance();
+            this.renderActiveScreen();
+        },
+
+        renderNavigation() {
+            this.elements.navContainer.innerHTML = '';
+            const isMobile = window.innerWidth <= 768;
+            this.elements.navContainer.className = isMobile 
+                ? 'flex flex-row w-full gap-0' 
+                : 'flex flex-col w-full gap-2';
+            
+            Object.entries(this.config.screens).forEach(([key, { title, icon }]) => {
+                const button = document.createElement('div');
+                button.className = 'nav-btn';
+                button.dataset.screen = key;
+                if (key === this.state.currentScreen) button.classList.add('active');
+                button.innerHTML = `<i class="ph-bold ${icon} text-2xl"></i><span class="hidden md:inline">${title}</span><span class="md:hidden text-xs">${title}</span>`;
+                this.elements.navContainer.appendChild(button);
+            });
+        },
+
+        renderCoinBalance() {
+            this.elements.coinBalanceValue.textContent = this.state.coins;
+        },
+
+        renderActiveScreen() {
+            const screenConfig = this.config.screens[this.state.currentScreen];
+            this.elements.screenTitle.textContent = screenConfig.title;
+            this.elements.screenSubtitle.textContent = screenConfig.subtitle;
+            document.querySelectorAll('.game-screen').forEach(s => s.classList.remove('active'));
+            const activeScreenEl = document.getElementById(`${this.state.currentScreen}Screen`);
+            if (activeScreenEl) activeScreenEl.classList.add('active');
+
+            switch (this.state.currentScreen) {
+                case 'shop': this.renderShopItems(); break;
+                case 'backpack': this.renderBackpackItems(); break;
+                case 'crafting': this.renderCraftingScreen(); break;
+                case 'smelting': this.renderSmeltingScreen(); break;
+                case 'character': this.renderCharacterScreen(); break;
+                case 'hunt': this.renderHuntScreen(); break;
+                case 'bank': break;
+            }
+        },
+
+        renderShopItems() {
+            this.elements.shopItemsContainer.innerHTML = '';
+            this.config.shopStock.forEach(item => {
+                this.elements.shopItemsContainer.appendChild(this.createShopItemCard(item));
+            });
+        },
+
+
+        renderBackpackItems() {
+            this.elements.backpackCraftedContainer.innerHTML = '';
+            this.elements.backpackSmeltedContainer.innerHTML = '';
+            this.elements.backpackMaterialsContainer.innerHTML = '';
+
+            const smeltedItemNames = this.config.smeltingRecipes.map(r => r.name);
+
+            const craftedNames = Object.keys(this.state.inventory.crafted);
+            if(craftedNames.length === 0) {
+                this.elements.backpackCraftedContainer.innerHTML = `<p class="col-span-full text-gray-500">No crafted items yet.</p>`;
+            } else {
+                craftedNames.forEach(name => this.elements.backpackCraftedContainer.appendChild(this.createBackpackItemCard(name, this.state.inventory.crafted[name])));
+            }
+
+            const materialNames = Object.keys(this.state.inventory.materials);
+            let smeltedCount = 0;
+            let rawMaterialCount = 0;
+
+            materialNames.forEach(name => {
+                const quantity = this.state.inventory.materials[name];
+                if (smeltedItemNames.includes(name)) {
+                    this.elements.backpackSmeltedContainer.appendChild(this.createBackpackItemCard(name, quantity));
+                    smeltedCount++;
+                } else {
+                    this.elements.backpackMaterialsContainer.appendChild(this.createBackpackItemCard(name, quantity));
+                    rawMaterialCount++;
+                }
+            });
+            
+            if(smeltedCount === 0) {
+                this.elements.backpackSmeltedContainer.innerHTML = `<p class="col-span-full text-gray-500">No smelted items. Visit the smelter!</p>`;
+            }
+            if(rawMaterialCount === 0) {
+                this.elements.backpackMaterialsContainer.innerHTML = `<p class="col-span-full text-gray-500">No raw materials. Visit the shop or hunt!</p>`;
+            }
+        },
+
+        renderCraftingScreen() {
+            const filterContainer = this.elements.craftingFilterContainer;
+            filterContainer.innerHTML = '';
+            const filters = ['All', 'Weapon', 'Shield', 'Armor', 'Accessory'];
+            filters.forEach(filter => {
+                const btn = document.createElement('button');
+                btn.className = 'pro-btn crafting-filter-btn text-sm px-3 py-1';
+                if (this.state.craftingFilter === filter) btn.classList.add('active');
+                btn.dataset.filter = filter;
+                btn.textContent = filter;
+                filterContainer.appendChild(btn);
+            });
+
+            const filteredRecipes = this.state.craftingFilter === 'All'
+                ? this.config.craftingRecipes
+                : this.config.craftingRecipes.filter(r => r.slot === this.state.craftingFilter.toLowerCase());
+
+            this.elements.recipesContainer.innerHTML = '';
+            if (filteredRecipes.length === 0) {
+                 this.elements.recipesContainer.innerHTML = `<p class="col-span-full text-gray-500 text-center mt-8">No blueprints for this category.</p>`;
+            } else {
+                filteredRecipes.forEach(recipe => {
+                    this.elements.recipesContainer.appendChild(this.createRecipeCard(recipe));
+                });
+            }
+            
+            this.renderMaterialInventory(this.elements.craftingInventoryContainer);
+        },
+
+        renderSmeltingScreen() {
+            this.elements.smeltingRecipesContainer.innerHTML = '';
+            this.config.smeltingRecipes.forEach(recipe => {
+                this.elements.smeltingRecipesContainer.appendChild(this.createSmeltingRecipeCard(recipe));
+            });
+            this.renderMaterialInventory(this.elements.smeltingInventoryContainer);
+        },
+
+        renderMaterialInventory(container) {
+            container.innerHTML = '';
+            const materialNames = Object.keys(this.state.inventory.materials);
+             if(materialNames.length === 0) {
+                container.innerHTML = `<p class="col-span-full text-gray-500 text-center">No materials.</p>`;
+            } else {
+                materialNames.forEach(name => container.appendChild(this.createCraftingInventoryItem(name, this.state.inventory.materials[name])));
+            }
+        },
+
+        renderCharacterScreen() {
+            this.calculateTotalStats(); 
+            this.renderPlayerStats();
+            
+            const slotsContainer = this.elements.equipmentSlotsContainer;
+            slotsContainer.innerHTML = '';
+            const slotOrder = ['weapon1', 'weapon2', 'shield', 'armor', 'accessory1', 'accessory2'];
+            slotOrder.forEach(slotKey => {
+                const itemName = this.state.player.equipped[slotKey];
+                const iconInfo = this.getItemIcon(itemName);
+                
+                let iconHTML;
+                if (itemName && iconInfo.img) {
+                    iconHTML = `<img src="${iconInfo.img}" class="w-8 h-8 object-contain">`;
+                } else if (itemName && iconInfo.icon) {
+                    iconHTML = `<i class="ph-bold ${iconInfo.icon} ${iconInfo.color} text-3xl"></i>`;
+                } else {
+                    iconHTML = `<i class="ph-bold ph-square text-gray-600 text-3xl"></i>`;
+                }
+
+                slotsContainer.innerHTML += `
+                    <div class="glass-pane p-4 rounded-lg flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 flex items-center justify-center">${iconHTML}</div>
+                            <div>
+                                <p class="font-bold text-gray-400 capitalize">${slotKey.replace(/\d/g, ' ')}</p>
+                                <p class="text-lg font-semibold">${itemName || 'Empty'}</p>
+                            </div>
+                        </div>
+                        ${itemName ? `<button class="pro-btn text-sm unequip-btn" data-slot="${slotKey}">Unequip</button>` : ''}
+                    </div>`;
+            });
+
+            const equippableContainer = this.elements.equippableItemsContainer;
+            equippableContainer.innerHTML = '';
+            const equippableItems = Object.entries(this.state.inventory.crafted);
+            if (equippableItems.length === 0 || equippableItems.every(([name, quant]) => quant === 0)) {
+                equippableContainer.innerHTML = `<p class="col-span-full text-gray-500">No equippable items in backpack.</p>`;
+            } else {
+                equippableItems.forEach(([name, quantity]) => {
+                    if (quantity <= 0) return;
+                    const itemData = this.config.craftingRecipes.find(r => r.name === name);
+                    if (!itemData || !itemData.slot) return;
+                    const iconInfo = this.getItemIcon(name);
+                    const card = document.createElement('div');
+                    const iconHTML = iconInfo.img ? `<img src="${iconInfo.img}" class="w-16 h-16 object-contain mx-auto">` : `<i class="ph-bold ${iconInfo.icon} ${iconInfo.color} text-5xl mx-auto"></i>`;
+
+                    card.className = 'glass-pane rounded-xl p-4 flex flex-col text-center';
+                    card.innerHTML = `
+                        ${iconHTML}
+                        <h4 class="font-bold text-lg mt-2">${name} (x${quantity})</h4>
+                        <p class="text-sm text-gray-400 capitalize">${itemData.slot}</p>
+                        <button class="pro-btn btn-primary mt-4 w-full equip-btn" data-item-name="${name}">Equip</button>`;
+                    equippableContainer.appendChild(card);
+                });
+            }
+        },
+
+        renderPlayerStats() {
+            const statsContainer = this.elements.playerStatsContainer;
+            statsContainer.innerHTML = '';
+            const stats = this.state.player.totalStats;
+            const statDisplay = {
+                'Health': { value: `${stats.health.toFixed(0)} / ${stats.maxHealth}`, icon: 'ph-heart' },
+                'Mana': { value: `${stats.mana} / ${stats.maxMana}`, icon: 'ph-drop' },
+                'Damage': { value: stats.damage.toFixed(1), icon: 'ph-sword' },
+                'Attack Speed': { value: `${stats.attackSpeed.toFixed(2)}/s`, icon: 'ph-wind' },
+                'Defense': { value: `${stats.defense.toFixed(0)}%`, icon: 'ph-shield' },
+            };
+            Object.entries(statDisplay).forEach(([name, {value, icon}]) => {
+                statsContainer.innerHTML += `
+                    <div class="flex justify-between items-center text-lg">
+                        <div class="flex items-center gap-2 text-gray-300"><i class="ph-bold ${icon} text-sky-400"></i><span>${name}</span></div>
+                        <span class="font-bold text-white">${value}</span>
+                    </div>`;
+            });
+        },
+        
+        renderHuntScreen() {
+            this.elements.combatContainer.classList.add('hidden');
+            this.elements.mapSelectionContainer.style.display = 'block';
+            this.elements.mapButtonsContainer.innerHTML = '';
+            Object.entries(this.config.maps).forEach(([name, data]) => {
+                const button = document.createElement('button');
+                const mapIconInfo = this.config.mapIcons[name] || {};
+                const iconHTML = mapIconInfo.img 
+                    ? `<img src="${mapIconInfo.img}" class="h-20 w-auto mx-auto mb-4 object-contain" alt="${name}">`
+                    : `<i class="ph ph-map-trifold text-7xl text-sky-400 mb-4"></i>`;
+
+                button.className = 'map-btn glass-pane rounded-xl p-6 text-center transition-all duration-300 hover:transform hover:-translate-y-1 hover:border-sky-400';
+                button.dataset.mapName = name;
+                button.innerHTML = `${iconHTML}<h3 class="text-2xl font-bold text-white">${name}</h3>`;
+                this.elements.mapButtonsContainer.appendChild(button);
+            });
+        },
+        renderCombatView() {
+            if (!this.state.isFighting && this.state.player.totalStats.health <= 0) {
+                 this.state.player.totalStats.health = this.state.player.totalStats.maxHealth;
+            }
+            const player = this.state.player.totalStats;
+            const playerHealthPercent = (player.health / player.maxHealth) * 100;
+            const playerIconInfo = this.config.enemyIcons['You'];
+            const playerIconHTML = playerIconInfo.img 
+                ? `<img src="${playerIconInfo.img}" class="h-24 w-auto mx-auto mb-4 object-contain" alt="You">`
+                : `<i class="ph-bold ${playerIconInfo.icon} ${playerIconInfo.color} text-8xl mx-auto mb-4"></i>`;
+
+            this.elements.playerCombatant.innerHTML = `
+                ${playerIconHTML}
+                <h3 class="text-2xl font-bold ${playerIconInfo.color}">You</h3>
+                <div class="my-4">
+                    <p class="font-bold text-xl">${player.health.toFixed(0)} / ${player.maxHealth}</p>
+                    <div class="health-bar-bg h-4 w-full mt-1"><div class="health-bar-fill player" style="width: ${playerHealthPercent}%"></div></div>
+                </div>
+                <div class="text-left space-y-2">
+                    <p><strong>Damage:</strong> ${player.damage.toFixed(1)}</p>
+                    <p><strong>Defense:</strong> ${player.defense.toFixed(0)}%</p>
+                    <p><strong>Attack Speed:</strong> ${player.attackSpeed.toFixed(2)}/s</p>
+                    <p><strong>Mana:</strong> ${player.mana}/${player.maxMana}</p>
+                </div>`;
+            
+            const enemy = this.state.currentEnemy;
+            if (!enemy) return;
+            const enemyHealthPercent = (enemy.health / enemy.maxHealth) * 100;
+            const enemyIconInfo = this.config.enemyIcons[enemy.name] || this.config.enemyIcons.Default;
+            const enemyIconHTML = enemyIconInfo.img
+                ? `<img src="${enemyIconInfo.img}" class="h-24 w-auto mx-auto mb-4 object-contain" alt="${enemy.name}">`
+                : `<i class="ph-bold ${enemyIconInfo.icon} ${enemyIconInfo.color} text-8xl mx-auto mb-4"></i>`;
+            
+            this.elements.enemyCombatant.innerHTML = `
+                ${enemyIconHTML}
+                <h3 class="text-2xl font-bold ${enemyIconInfo.color}">${enemy.name}</h3>
+                <div class="my-4">
+                    <p class="font-bold text-xl">${enemy.health.toFixed(0)} / ${enemy.maxHealth}</p>
+                    <div class="health-bar-bg h-4 w-full mt-1"><div class="health-bar-fill enemy" style="width: ${enemyHealthPercent}%"></div></div>
+                </div>
+                <div class="text-left space-y-2">
+                    <p><strong>Damage:</strong> ${enemy.damage}</p>
+                    <p><strong>Defense:</strong> ${enemy.defense}%</p>
+                    <p><strong>Attack Speed:</strong> ${enemy.attackSpeed.toFixed(2)}/s</p>
+                    <p><strong>Mana:</strong> ${enemy.mana || 0}/--</p>
+                </div>`;
+        },
+
+        // --- UI ELEMENT CREATORS ---
+        
+        getItemIcon(itemName) {
+            return this.config.itemIcons[itemName] || this.config.itemIcons.Default;
+        },
+
+        createShopItemCard(item) {
+            const iconInfo = this.getItemIcon(item.name);
+            const card = document.createElement('div');
+            const iconHTML = iconInfo.img ? `<img src="${iconInfo.img}" class="w-16 h-16 object-contain" alt="${item.name}">` : `<i class="${iconInfo.icon} ${iconInfo.color} text-6xl"></i>`;
+            card.className = 'glass-pane rounded-xl p-4 flex flex-col text-center transition-all duration-300 hover:transform hover:-translate-y-1 hover:border-sky-400';
+            card.innerHTML = `
+                <div class="bg-gray-900/50 rounded-lg w-full h-32 flex items-center justify-center mb-4">
+                    ${iconHTML}
+                </div>
+                <h3 class="text-xl font-bold text-white mb-2">${item.name}</h3>
+                <div class="text-sm text-gray-400 mb-4 flex-grow"><p>Type: ${item.type}</p></div>
+                <div class="flex items-center justify-center gap-1 text-lg font-semibold text-amber-400 mb-4">
+                    <i class="ph-bold ph-coins"></i><span>${item.price}</span>
+                </div>
+                <button class="pro-btn btn-primary buy-btn w-full" data-item-name="${item.name}">Buy</button>`;
+            return card;
+        },
+
+        createBackpackItemCard(name, quantity) {
+            const iconInfo = this.getItemIcon(name);
+            const card = document.createElement('div');
+            const iconHTML = iconInfo.img ? `<img src="${iconInfo.img}" class="w-12 h-12 object-contain" alt="${name}">` : `<i class="${iconInfo.icon} ${iconInfo.color} text-5xl"></i>`;
+            card.className = 'glass-pane rounded-xl p-4 flex flex-col items-center justify-center text-center transition-all duration-300 aspect-square';
+            card.innerHTML = `
+                ${iconHTML}
+                <h3 class="text-md font-bold text-white mt-2 text-center break-words w-full">${name}</h3>
+                <p class="text-sm text-gray-400 bg-gray-900/50 rounded-full px-3 py-1 mt-2 font-semibold">x ${quantity}</p>`;
+            return card;
+        },
+
+        createRecipeCard(recipeData) {
+            const iconInfo = this.getItemIcon(recipeData.name);
+            const card = document.createElement('div');
+            const iconHTML = iconInfo.img ? `<img src="${iconInfo.img}" class="w-12 h-12 object-contain" alt="${recipeData.name}">` : `<i class="${iconInfo.icon} ${iconInfo.color} text-5xl"></i>`;
+            let requirementsHTML = '', canCraft = true;
+            for(const material in recipeData.recipe) {
+                const required = recipeData.recipe[material], has = this.state.inventory.materials[material] || 0;
+                let textColor = has >= required ? 'text-green-400' : (has > 0 ? 'text-yellow-400' : 'text-red-400');
+                requirementsHTML += `<li class="flex justify-between ${textColor}"><span>${material}</span> <span>${has} / ${required}</span></li>`;
+                if(has < required) canCraft = false;
+            }
+            let statsHTML = Object.entries(recipeData.stats).map(([stat, value]) => {
+                let displayValue;
+                if (stat === 'attackSpeedModifier') {
+                    if (value < 0){
+                        displayValue = `${(value * 100).toFixed(0)}%`;
+                    }
+                    else {
+                        displayValue = `+${(value * 100).toFixed(0)}%`;
+                    }
+                } else if (stat === 'defense') {
+                    displayValue = `+${value}%`;
+                } else {
+                    displayValue = `+${value}`;
+                }
+                return `<p class="text-sm text-sky-300 capitalize">${displayValue} ${stat.replace(/([A-Z])/g, ' $1').replace('Modifier', '').trim()}</p>`
+            }).join('');
+            card.className = `recipe-card glass-pane rounded-xl p-4 flex flex-col md:flex-row items-center gap-4 transition-all duration-300 ${canCraft ? 'craftable' : ''}`;
+            card.innerHTML = `
+                <div class="bg-gray-900/50 rounded-lg w-24 h-24 flex-shrink-0 flex items-center justify-center">${iconHTML}</div>
+                <div class="flex-grow text-center md:text-left">
+                    <h3 class="text-xl font-bold text-white">${recipeData.name}</h3>
+                    <p class="text-gray-400 capitalize font-semibold">${recipeData.slot}</p>
+                    <div class="mt-2">${statsHTML}</div>
+                </div>
+                <div class="w-full md:w-56 mt-4 md:mt-0 text-center">
+                    <ul class="text-sm text-gray-300 space-y-1">${requirementsHTML}</ul>
+                    <button class="pro-btn btn-success craft-btn w-full mt-3" data-recipe-name="${recipeData.name}" ${!canCraft ? 'disabled' : ''}>Craft</button>
+                </div>`;
+            return card;
+        },
+
+        createSmeltingRecipeCard(recipeData) {
+            const iconInfo = this.getItemIcon(recipeData.name);
+            const card = document.createElement('div');
+            const iconHTML = iconInfo.img ? `<img src="${iconInfo.img}" class="w-12 h-12 object-contain" alt="${recipeData.name}">` : `<i class="${iconInfo.icon} ${iconInfo.color} text-5xl"></i>`;
+            let requirementsHTML = '', canSmelt = true;
+            for(const material in recipeData.recipe) {
+                const required = recipeData.recipe[material], has = this.state.inventory.materials[material] || 0;
+                let textColor = has >= required ? 'text-green-400' : (has > 0 ? 'text-yellow-400' : 'text-red-400');
+                requirementsHTML += `<li class="flex justify-between ${textColor}"><span>${material}</span> <span>${has} / ${required}</span></li>`;
+                if(has < required) canSmelt = false;
+            }
+            card.className = `recipe-card glass-pane rounded-xl p-4 flex flex-col md:flex-row items-center gap-4 transition-all duration-300 ${canSmelt ? 'craftable' : ''}`;
+            card.innerHTML = `
+                <div class="bg-gray-900/50 rounded-lg w-24 h-24 flex-shrink-0 flex items-center justify-center">${iconHTML}</div>
+                <div class="flex-grow text-center md:text-left"><h3 class="text-xl font-bold text-white">${recipeData.name}</h3><p class="text-gray-400 font-semibold">Refined Material</p></div>
+                <div class="w-full md:w-56 mt-4 md:mt-0 text-center">
+                    <ul class="text-sm text-gray-300 space-y-1">${requirementsHTML}</ul>
+                    <button class="pro-btn btn-success smelt-btn w-full mt-3" data-recipe-name="${recipeData.name}" ${!canSmelt ? 'disabled' : ''}>Smelt</button>
+                </div>`;
+            return card;
+        },
+
+        createCraftingInventoryItem(name, quantity) {
+            const iconInfo = this.getItemIcon(name);
+            const card = document.createElement('div');
+            const iconHTML = iconInfo.img ? `<img src="${iconInfo.img}" class="w-10 h-10 object-contain" alt="${name}">` : `<i class="${iconInfo.icon} ${iconInfo.color} text-4xl"></i>`;
+            card.className = `glass-pane rounded-xl p-2 flex flex-col items-center justify-center text-center transition-all duration-300 aspect-square`;
+            card.innerHTML = `
+                ${iconHTML}
+                <h4 class="text-sm font-bold text-white mt-2">${name}</h4>
+                <p class="text-xs text-gray-400">In Stock: ${quantity}</p>`;
+            return card;
+        },
+
+        showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            const icons = { info: 'ph-info', success: 'ph-check-circle', error: 'ph-x-circle' };
+            toast.innerHTML = `<i class="ph-bold ${icons[type]} toast-icon"></i><span class="font-semibold">${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 100);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                toast.addEventListener('transitionend', () => toast.remove());
+            }, 3000);
+        },
+        
+        showDamagePopup(targetElement, damage, type) {
+            const popup = document.createElement('div');
+            popup.className = `damage-popup ${type}`;
+            popup.textContent = `-${damage}`;
+            targetElement.appendChild(popup);
+            popup.addEventListener('animationend', () => popup.remove());
+        },
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        App.init();
+        window.addEventListener('resize', () => App.renderNavigation());
+    });
+    </script>
+</body>
+</html>
