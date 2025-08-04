@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Awesome Game - Pro Edition</title>
-
+    <title>CrossJourney V1.2 - Beta</title>
+    <link rel="icon" type="image/png" href="/assets/game-icon/crossjourney.png">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -552,7 +552,7 @@
             },
             player: {
                 baseStats: {
-                    health: 100, maxHealth: 100,
+                    health: 30, maxHealth: 30,
                     mana: 50, maxMana: 50,
                     damage: 5, attackSpeed: 1.0, // attacks per second
                     defense: 0,
@@ -682,20 +682,24 @@
                 "Default": { img: "assets/icons/placeholder/none.png", color: "text-gray-400" }
             },
             enemyIcons: {
-                "You": { img: "assets/icons/enemies/player.png", color: "text-green-400" },
+                "You": { img: "assets/icons/player/player.png", color: "text-green-400" },
+
                 "Wild Boar": { img: "assets/icons/enemies/wild_boar.png", color: "text-pink-400" },
-                "Wild Wolf": { img: "assets/icons/enemies/wild_wolf.png", color: "text-gray-400" },
-                "Wild Bear": { img: "assets/icons/enemies/wild_bear.png", color: "text-amber-800" },
+                "Lone Wolf": { img: "assets/icons/enemies/lone_wolf.png", color: "text-gray-400" },
+                "Grizzly Bear": { img: "assets/icons/enemies/grizzly_bear.png", color: "text-amber-800" },
                 "Red Fox": { img: "assets/icons/enemies/red_fox.png", color: "text-orange-500" },
                 "Bunny": { img: "assets/icons/enemies/bunny.png", color: "text-gray-200" },
                 "Pale Wolf": { img: "assets/icons/enemies/pale_wolf.png", color: "text-slate-300" },
                 "Giant Hen": { img: "assets/icons/enemies/giant_hen.png", color: "text-red-300" },
+
                 "Rock Beetle": { img: "assets/icons/enemies/rock_beetle.png", color: "text-gray-600" },
                 "Fiery Wasp": { img: "assets/icons/enemies/fiery_wasp.png", color: "text-yellow-400" },
                 "Large Ladybug": { img: "assets/icons/enemies/large_ladybug.png", color: "text-red-500" },
+
                 "Ent": { img: "assets/icons/enemies/ent.png", color: "text-green-600" },
                 "Mimic Chest": { img: "assets/icons/enemies/mimic_chest.png", color: "text-amber-600" },
                 "Corrupted Ent": { img: "assets/icons/enemies/corrupted_ent.png", color: "text-purple-500" },
+
                 "Default": { img: "assets/icons/placeholder/none.png", color: "text-gray-500" }
             },
             mapIcons: {
@@ -789,9 +793,9 @@
                         { name: "Bunny", health: 15, mana: 0, damage: 2, defense: 0, attackSpeed: 1.0, spawnChance: 0.30, loot: { coins: [1, 5], materials: { "Feathers": { chance: 0.9, amount: [1, 2] } } } },
                         { name: "Wild Boar", health: 30, mana: 0, damage: 4, defense: 1, attackSpeed: 0.8, spawnChance: 0.25, loot: { coins: [5, 15], materials: { "Bone": { chance: 0.5, amount: [1, 2] }, "Leather Scrap": { chance: 0.8, amount: [1, 3] } } } },
                         { name: "Red Fox", health: 28, mana: 0, damage: 5, defense: 1, attackSpeed: 1.0, spawnChance: 0.20, loot: { coins: [8, 18], materials: { "Fang": { chance: 0.5, amount: [1, 2] }, "Bone": { chance: 0.3, amount: [1, 1] } } } },
-                        { name: "Wild Wolf", health: 25, mana: 0, damage: 6, defense: 0, attackSpeed: 1.2, spawnChance: 0.15, loot: { coins: [10, 20], materials: { "Wolf Pelt": { chance: 0.4, amount: [1, 1] }, "Fang": { chance: 0.2, amount: [1, 1] } } } },
+                        { name: "Lone Wolf", health: 25, mana: 0, damage: 6, defense: 0, attackSpeed: 1.2, spawnChance: 0.15, loot: { coins: [10, 20], materials: { "Wolf Pelt": { chance: 0.4, amount: [1, 1] }, "Fang": { chance: 0.2, amount: [1, 1] } } } },
                         { name: "Giant Hen", health: 40, mana: 0, damage: 7, defense: 2, attackSpeed: 0.7, spawnChance: 0.05, loot: { coins: [20, 40], materials: { "Feathers": { chance: 1.0, amount: [2, 5] }, "Bone": { chance: 0.5, amount: [1, 3] } } } },
-                        { name: "Wild Bear", health: 50, mana: 0, damage: 8, defense: 2, attackSpeed: 0.6, spawnChance: 0.03, loot: { coins: [25, 50], materials: { "Bear Fur": { chance: 0.6, amount: [1, 2] }, "Bone": { chance: 0.7, amount: [1, 4] } } } },
+                        { name: "Grizzly Bear", health: 50, mana: 0, damage: 8, defense: 2, attackSpeed: 0.6, spawnChance: 0.03, loot: { coins: [25, 50], materials: { "Bear Fur": { chance: 0.6, amount: [1, 2] }, "Bone": { chance: 0.7, amount: [1, 4] } } } },
                         { name: "Pale Wolf", health: 60, mana: 0, damage: 10, defense: 3, attackSpeed: 1.1, spawnChance: 0.02, loot: { coins: [40, 70], materials: { "Wolf Pelt": { chance: 0.8, amount: [1, 2] }, "Fang": { chance: 0.6, amount: [1, 3] } } } },
                     ]
                 },
